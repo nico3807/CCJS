@@ -481,7 +481,7 @@ async function explainError() {
 
 async function callClaude(systemPrompt, userPrompt) {
   const payload = {
-    model: "claude-haiku-4-5",
+    model: "claude-haiku-4-5-20251001",
     max_tokens: 8192,
     temperature: 1,
     system: systemPrompt,
