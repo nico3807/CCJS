@@ -65,7 +65,6 @@ header {
 
 /* ── Zones (gauche et droite) ────────────────────────────────────────────── */
 .code-area {
-  flex: 1;
   display: grid;
   grid-template-rows: auto minmax(0, 1fr) auto;
   border: 1px solid #e0e0d8;
@@ -78,9 +77,14 @@ header {
 }
 
 .code-area.editor {
+  flex: 6 1 0;
   display: grid;
   grid-template-rows: auto minmax(0, 1fr) auto;
   overflow: hidden;
+}
+
+.code-area.statement {
+  flex: 4 1 0;
 }
 
 .code-area h3 {
