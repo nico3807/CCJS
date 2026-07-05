@@ -1,0 +1,5 @@
+<?php
+// config.php.example — copie ce fichier en "config.php" (ignoré par git)
+// et renseigne ta vraie clé API Claude. Ce fichier doit être déposé
+// manuellement sur le serveur, à côté de proxy.php.
+define('CLAUDE_API_KEY', 'VOTRE_CLE_API_CLAUDE');

@@ -1,6 +1,6 @@
 <?php
 // proxy.php — la clé n'est visible que sur le serveur
-define('CLAUDE_API_KEY', 'VOTRE_CLE_API_CLAUDE'); //CCJS
+require_once __DIR__ . '/config.php'; // définit CLAUDE_API_KEY, non versionné
 define('CLAUDE_URL', 'https://api.anthropic.com/v1/messages');
 
 // Sécurité : on n'accepte que les requêtes POST depuis ton domaine
