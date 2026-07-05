@@ -27,9 +27,7 @@ const closeModalButton = document.getElementById("closeModalButton");
 const assistantButton = document.getElementById("assistantButton");
 const topicModal = document.getElementById("topicModal");
 const closeTopicButton = document.getElementById("closeTopicButton");
-// ⭐️ NOUVEAU : Éléments de la modale d'exécution
-const executionModal = document.getElementById("executionModal");
-const closeExecutionButton = document.getElementById("closeExecutionButton");
+const hintLevels = document.getElementById("hintLevels");
 
 // Variable pour stocker l'exercice (texte complet pour l'assistant)
 let currentExerciseText = "Aucun exercice généré pour le moment.";
@@ -72,6 +70,7 @@ function saveAttempt(isCorrect) {
   localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
   updateScoreDisplay();
   updateWeakPointsButton();
+  updateTopicProgress();
 }
 
 function getTopicStats() {
@@ -119,6 +118,67 @@ function updateWeakPointsButton() {
   if (btn) btn.disabled = getHistory().length === 0;
 }
 
+// --- PROGRESSION PAR THÈME (objectif : 5 réussites par thème) ---
+
+const TOPIC_GOAL = 5;
+
+function updateTopicProgress() {
+  const stats = getTopicStats();
+  document.querySelectorAll(".topic-btn[data-topic]").forEach((btn) => {
+    const prog = btn.querySelector(".topic-progress");
+    if (!prog) return;
+    const correct = stats[btn.dataset.topic]?.correct || 0;
+    const pct = Math.min(100, (correct / TOPIC_GOAL) * 100);
+    const done = correct >= TOPIC_GOAL;
+    prog.innerHTML = `
+      <span class="topic-progress-bar"><span class="topic-progress-fill${done ? " done" : ""}" style="width:${pct}%"></span></span>
+      <span class="topic-progress-count">${done ? "🏆" : correct + "/" + TOPIC_GOAL}</span>
+    `;
+  });
+}
+
+// --- SAUVEGARDE AUTOMATIQUE (code + exercice en cours) ---
+
+const DRAFT_CODE_KEY = "ccjs_draft_code";
+const CURRENT_EX_KEY = "ccjs_current_exercise";
+
+let draftSaveTimer;
+codeMirrorInstance.on("change", () => {
+  clearTimeout(draftSaveTimer);
+  draftSaveTimer = setTimeout(() => {
+    localStorage.setItem(DRAFT_CODE_KEY, codeMirrorInstance.getValue());
+  }, 400);
+});
+
+function saveExerciseState() {
+  localStorage.setItem(
+    CURRENT_EX_KEY,
+    JSON.stringify({
+      html: exerciseContainer.innerHTML,
+      text: currentExerciseText,
+      topic: currentTopic,
+      difficulty: currentDifficulty,
+    }),
+  );
+}
+
+function restoreSession() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(CURRENT_EX_KEY) || "null");
+    if (saved && saved.text && saved.text.length > 20) {
+      exerciseContainer.innerHTML = saved.html;
+      currentExerciseText = saved.text;
+      currentTopic = saved.topic;
+      currentDifficulty = saved.difficulty || "débutant";
+      if (submitButton) submitButton.disabled = false;
+    }
+  } catch {
+    /* sauvegarde corrompue : on repart de zéro */
+  }
+  const draft = localStorage.getItem(DRAFT_CODE_KEY);
+  if (draft) codeMirrorInstance.setValue(draft);
+}
+
 async function generateWeakPointsExercise() {
   topicModal.style.display = "none";
 
@@ -157,12 +217,37 @@ document.querySelectorAll(".difficulty-btn").forEach((btn) => {
   });
 });
 
-// --- 2. EXÉCUTION DU CODE (RunCode) ---
+// --- 2. EXÉCUTION DU CODE (Console intégrée) ---
+
+const CONSOLE_STYLE = `
+  body { font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace; margin: 0; padding: 10px; background-color: #f8f9fa; color: #1a1a1a; }
+  pre { font-size: 14px; margin: 0 0 4px; white-space: pre-wrap; word-wrap: break-word; }
+  .placeholder { color: #9ca3af; font-style: italic; font-size: 13px; font-family: system-ui, sans-serif; }
+`;
+
+function initConsole(message) {
+  const outputFrame = document.getElementById("outputFrame");
+  const iframeDoc =
+    outputFrame.contentDocument || outputFrame.contentWindow.document;
+  iframeDoc.open();
+  iframeDoc.write(`
+    <!DOCTYPE html>
+    <html>
+    <head><style>${CONSOLE_STYLE}</style></head>
+    <body><div class="placeholder">${message}</div></body>
+    </html>
+  `);
+  iframeDoc.close();
+}
+
+function clearConsole() {
+  lastError = null;
+  const existingErrorBtn = document.getElementById("errorExplainBtn");
+  if (existingErrorBtn) existingErrorBtn.remove();
+  initConsole("Console effacée. Clique sur ▶ Tester le code pour relancer.");
+}
 
 function runCode() {
-  // ⭐️ NOUVEAU : On ouvre la pop-up dès qu'on lance le test
-  if (executionModal) executionModal.style.display = "block";
-
   // Réinitialisation de l'état d'erreur
   lastError = null;
   const existingErrorBtn = document.getElementById("errorExplainBtn");
@@ -187,8 +272,8 @@ function runCode() {
     <html>
     <head>
         <style>
-            body { font-family: monospace; margin: 0; padding: 10px; background-color: #dedede; }
-            pre { font-size: 16px; margin: 0; white-space: pre-wrap; word-wrap: break-word; }
+            ${CONSOLE_STYLE}
+            pre.error { color: #dc2626; }
         </style>
     </head>
     <body><div id="script-target"></div></body>
@@ -211,10 +296,16 @@ function runCode() {
         };
         try {
             ${code}
+            if (!document.querySelector('pre')) {
+                const p = document.createElement('div');
+                p.className = 'placeholder';
+                p.textContent = '✓ Code exécuté sans erreur (aucune sortie console — utilise console.log() pour afficher un résultat).';
+                document.body.appendChild(p);
+            }
         } catch (e) {
             const p = document.createElement('pre');
-            p.style.color = 'red';
-            p.textContent = 'Erreur: ' + e.message;
+            p.className = 'error';
+            p.textContent = 'Erreur : ' + e.message;
             document.body.appendChild(p);
             window.parent.postMessage({ type: 'error', message: e.message }, '*');
         }
@@ -332,6 +423,7 @@ async function generateExercise(specificInstructions = "") {
       instructionsPart,
     )}</div>`;
     codeMirrorInstance.setValue(codePart);
+    saveExerciseState();
   } catch (error) {
     console.error(error);
     exerciseContainer.innerHTML = `<p style="color: #dc2626;">Erreur API. Ça arrive... Regénère l'exercice !</p>`;
@@ -345,6 +437,7 @@ async function generateExercise(specificInstructions = "") {
 async function validateCode() {
   if (currentExerciseText === "Aucun exercice généré pour le moment.") return;
 
+  if (hintLevels) hintLevels.style.display = "none";
   assistantModal.style.display = "block";
   assistantContent.innerHTML =
     '<p style="color: #1e3a5f; text-align: center; margin-top: 50px;">Évaluation de ta réponse en cours... ⏳</p>';
@@ -383,17 +476,68 @@ ${studentCode}
 
     saveAttempt(isCorrect);
     assistantContent.innerHTML = verdictHtml + formatMarkdown(feedback);
+    if (isCorrect) launchConfetti();
   } catch (error) {
     assistantContent.innerHTML = `<p style="color: #dc2626;">Erreur d'évaluation (${error.message})</p>`;
   }
 }
 
-// --- 5. ASSISTANT PÉDAGOGIQUE (Pop-up) ---
+// --- 4a. CONFETTIS DE RÉUSSITE ---
 
-async function askAssistant() {
+function launchConfetti() {
+  const colors = ["#1e3a5f", "#16a34a", "#0369a1", "#d97706", "#dc2626"];
+  const container = document.createElement("div");
+  container.className = "confetti-container";
+  for (let i = 0; i < 70; i++) {
+    const c = document.createElement("div");
+    c.className = "confetti";
+    c.style.left = Math.random() * 100 + "vw";
+    c.style.backgroundColor = colors[i % colors.length];
+    c.style.animationDelay = Math.random() * 0.7 + "s";
+    c.style.animationDuration = 2 + Math.random() * 1.5 + "s";
+    c.style.width = 6 + Math.random() * 6 + "px";
+    c.style.height = 8 + Math.random() * 8 + "px";
+    container.appendChild(c);
+  }
+  document.body.appendChild(container);
+  setTimeout(() => container.remove(), 4500);
+}
+
+// --- 5. ASSISTANT PÉDAGOGIQUE (indices progressifs) ---
+
+const HINT_PROMPTS = {
+  1: `Donne UN SEUL indice léger, en 2-3 phrases maximum, sous forme de piste de
+réflexion ou de question qui oriente l'étudiant. Ne montre JAMAIS de code,
+ne désigne pas la ligne exacte du problème. Si le code est déjà correct,
+félicite-le simplement.`,
+  2: `Indique précisément OÙ se situe le problème (quelle partie ou quelle ligne
+du code) et quelle notion est mal utilisée, en 3-5 phrases. Ne donne pas la
+correction, pas de code corrigé. Si le code est déjà correct, félicite-le.`,
+  3: `Explique la démarche complète étape par étape pour résoudre l'exercice, et
+donne la structure du code attendue (squelette ou pseudo-code avec des trous),
+mais JAMAIS la solution finale copiable telle quelle. Si le code est déjà
+correct, félicite-le.`,
+};
+
+const HINT_LOADING = {
+  1: "Préparation d'un petit indice... 💡",
+  2: "Analyse de ton code en cours... 🔍",
+  3: "Préparation d'une aide détaillée... 🛟",
+};
+
+function openAssistant() {
+  if (hintLevels) hintLevels.style.display = "flex";
+  assistantContent.innerHTML = `<p>
+    Je suis là pour t'aider. Choisis un niveau d'aide ci-dessus :
+    commence par l'indice léger 💡, et monte d'un cran si tu restes bloqué.
+  </p>`;
   assistantModal.style.display = "block";
-  assistantContent.innerHTML =
-    '<p style="color: #1e3a5f; text-align: center; margin-top: 50px;">Analyse de ton code en cours... 🧐</p>';
+}
+
+async function askAssistant(level = 1) {
+  if (hintLevels) hintLevels.style.display = "flex";
+  assistantModal.style.display = "block";
+  assistantContent.innerHTML = `<p style="color: #1e3a5f; text-align: center; margin-top: 50px;">${HINT_LOADING[level]}</p>`;
 
   const studentCode = codeMirrorInstance.getValue();
   // Pour l'assistant, on garde le texte complet (currentExerciseText) s'il existe
@@ -405,16 +549,17 @@ async function askAssistant() {
   const systemPrompt = `
 Tu es un expert en développement javascript.
 Tu dois aider un étudiant de première année en BUT MMI.
-Tu ne dois jamais donner la correction de l'exercice, juste des indices.
-Tu dois t'exprimer en français.
-Si le code est correct, félicite-le. Sinon, aide-le à trouver l'erreur.
+Tu ne dois jamais donner la correction complète de l'exercice.
+Tu dois t'exprimer en français, avec un ton encourageant.
+Niveau d'aide demandé par l'étudiant :
+${HINT_PROMPTS[level]}
 `;
 
   const userQuery = `
-Voici l'exercice complet proposé à l'étudiant : 
+Voici l'exercice complet proposé à l'étudiant :
 ${exerciseText}
 
-Voici le programme proposé par l'étudiant : 
+Voici le programme proposé par l'étudiant :
 ${studentCode}
 `;
 
@@ -441,25 +586,22 @@ window.addEventListener("message", (event) => {
 });
 
 function addErrorButton() {
-  const footer = executionModal.querySelector(".modal-footer");
-  if (!footer || document.getElementById("errorExplainBtn")) return;
+  const actions = document.querySelector(".console-actions");
+  if (!actions || document.getElementById("errorExplainBtn")) return;
 
   const btn = document.createElement("button");
   btn.id = "errorExplainBtn";
-  btn.textContent = "Expliquer l'erreur 🚑";
-  btn.style.backgroundColor = "#dc2626";
-  btn.style.color = "white";
-  btn.style.marginRight = "10px";
+  btn.textContent = "🚑 Expliquer l'erreur";
   btn.onclick = explainError;
 
-  // Insère le bouton avant le bouton "Fermer"
-  footer.insertBefore(btn, footer.firstChild);
+  // Insère le bouton avant le bouton "Effacer"
+  actions.insertBefore(btn, actions.firstChild);
 }
 
 async function explainError() {
   if (!lastError) return;
 
-  executionModal.style.display = "none";
+  if (hintLevels) hintLevels.style.display = "none";
   assistantModal.style.display = "block";
   assistantContent.innerHTML =
     '<p style="color: #1e3a5f; text-align: center; margin-top: 50px;">Analyse de l\'erreur en cours... 🚑</p>';
@@ -540,9 +682,25 @@ function formatMarkdown(text) {
 // Initialisation
 updateScoreDisplay();
 updateWeakPointsButton();
+updateTopicProgress();
+restoreSession();
+initConsole(
+  "La sortie de ton code s'affichera ici. Clique sur ▶ Tester le code (ou Ctrl + Entrée).",
+);
 
 const runBtn = document.getElementById("runButton");
 if (runBtn) runBtn.addEventListener("click", runCode);
+
+const clearConsoleBtn = document.getElementById("clearConsoleButton");
+if (clearConsoleBtn) clearConsoleBtn.addEventListener("click", clearConsole);
+
+// Raccourci clavier : Ctrl+Entrée (ou Cmd+Entrée sur Mac) pour tester
+document.addEventListener("keydown", (event) => {
+  if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
+    event.preventDefault();
+    runCode();
+  }
+});
 
 const weakPointsButton = document.getElementById("weakPointsButton");
 if (weakPointsButton)
@@ -550,6 +708,7 @@ if (weakPointsButton)
 
 if (newExerciseButton) {
   newExerciseButton.addEventListener("click", () => {
+    updateTopicProgress();
     topicModal.style.display = "block";
   });
 }
@@ -564,24 +723,21 @@ if (closeTopicButton) {
 // Fermeture des modales en cliquant en dehors ou avec Échap
 window.onclick = function (event) {
   if (event.target == assistantModal) closeAssistant();
-  if (event.target == executionModal) executionModal.style.display = "none";
   if (event.target == topicModal) topicModal.style.display = "none";
 };
 
 document.addEventListener("keydown", (event) => {
   if (event.key !== "Escape") return;
   if (assistantModal.style.display === "block") closeAssistant();
-  if (executionModal.style.display === "block")
-    executionModal.style.display = "none";
   if (topicModal.style.display === "block") topicModal.style.display = "none";
 });
 
 if (submitButton) submitButton.addEventListener("click", validateCode);
-if (assistantButton) assistantButton.addEventListener("click", askAssistant);
+if (assistantButton) assistantButton.addEventListener("click", openAssistant);
 if (closeModalButton)
   closeModalButton.addEventListener("click", closeAssistant);
-if (closeExecutionButton) {
-  closeExecutionButton.addEventListener("click", () => {
-    executionModal.style.display = "none";
-  });
-}
+
+// Boutons de niveau d'indice
+document.querySelectorAll(".hint-btn").forEach((btn) => {
+  btn.addEventListener("click", () => askAssistant(parseInt(btn.dataset.level)));
+});

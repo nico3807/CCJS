@@ -24,8 +24,17 @@
       <div class="code-area editor">
         <h3>Éditeur de code JavaScript :</h3>
         <textarea id="editor">// Ajoutez votre code JS ici</textarea>
+        <div class="console-panel">
+          <div class="console-bar">
+            <span class="console-title">Console</span>
+            <div class="console-actions">
+              <button id="clearConsoleButton" title="Effacer la console">🗑 Effacer</button>
+            </div>
+          </div>
+          <iframe id="outputFrame" title="Résultat de l'exécution"></iframe>
+        </div>
         <div class="buttons-row">
-          <button id="runButton">▶ Tester le code</button>
+          <button id="runButton" title="Ctrl + Entrée">▶ Tester le code <kbd>Ctrl+↵</kbd></button>
           <button id="submitButton" disabled>✔ Soumettre ma réponse</button>
         </div>
       </div>
@@ -46,44 +55,24 @@
       </div>
     </div>
 
-    <!-- LIGNE 2 : CONSOLE (100% de la largeur) -->
-    <!-- ⭐️ NOUVEAU : Structure de la Pop-up (Modale) -->
+    <!-- Modale Assistant (indices progressifs) -->
     <div id="assistantModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="assistantModalTitle">
       <div class="modal-content">
         <h3 id="assistantModalTitle">Assistant Pédagogique 🎓</h3>
+        <div id="hintLevels" class="hint-levels">
+          <button class="hint-btn" data-level="1">💡 Indice léger</button>
+          <button class="hint-btn" data-level="2">🔍 Indice ciblé</button>
+          <button class="hint-btn" data-level="3">🛟 Aide forte</button>
+        </div>
         <div id="assistantContent">
           <!-- La réponse de Claude s'affichera ici -->
           <p>
-            Je suis là pour t'aider. Clique sur le bouton pour analyser ton
-            code...
+            Je suis là pour t'aider. Choisis un niveau d'aide ci-dessus :
+            commence par l'indice léger, et monte d'un cran si tu restes bloqué.
           </p>
         </div>
         <div class="modal-footer">
           <button id="closeModalButton">Fermer</button>
-        </div>
-      </div>
-    </div>
-    <div id="executionModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="executionModalTitle">
-      <div class="modal-content">
-        <h3 id="executionModalTitle">Résultat de l'exécution 🚀</h3>
-
-        <div
-          id="executionContent"
-          style="
-            flex: 1;
-            position: relative;
-            background: #dedede;
-            overflow: hidden;
-          "
-        >
-          <iframe
-            id="outputFrame"
-            style="width: 100%; height: 100%; border: none; display: block"
-          ></iframe>
-        </div>
-
-        <div class="modal-footer">
-          <button id="closeExecutionButton">Fermer</button>
         </div>
       </div>
     </div>
@@ -97,20 +86,25 @@
           <button class="difficulty-btn" data-level="avancé">🔴 Avancé</button>
         </div>
         <div class="topic-buttons-container">
-          <button onclick="loadPromptAndRun('variables.txt')" class="topic-btn">
-            Travail sur les variables
+          <button onclick="loadPromptAndRun('variables.txt')" class="topic-btn" data-topic="variables.txt">
+            <span class="topic-label">Travail sur les variables</span>
+            <span class="topic-progress"></span>
           </button>
-          <button onclick="loadPromptAndRun('if.txt')" class="topic-btn">
-            Boucles If / Else
+          <button onclick="loadPromptAndRun('if.txt')" class="topic-btn" data-topic="if.txt">
+            <span class="topic-label">Boucles If / Else</span>
+            <span class="topic-progress"></span>
           </button>
-          <button onclick="loadPromptAndRun('for.txt')" class="topic-btn">
-            Boucles For
+          <button onclick="loadPromptAndRun('for.txt')" class="topic-btn" data-topic="for.txt">
+            <span class="topic-label">Boucles For</span>
+            <span class="topic-progress"></span>
           </button>
-          <button onclick="loadPromptAndRun('while.txt')" class="topic-btn">
-            Boucle While
+          <button onclick="loadPromptAndRun('while.txt')" class="topic-btn" data-topic="while.txt">
+            <span class="topic-label">Boucle While</span>
+            <span class="topic-progress"></span>
           </button>
-          <button onclick="loadPromptAndRun('tableaux.txt')" class="topic-btn">
-            Tableaux
+          <button onclick="loadPromptAndRun('tableaux.txt')" class="topic-btn" data-topic="tableaux.txt">
+            <span class="topic-label">Tableaux</span>
+            <span class="topic-progress"></span>
           </button>
         </div>
         <div class="weak-points-section">
