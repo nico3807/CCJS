@@ -1,196 +1,236 @@
-/* --- CONFIGURATION GÉNÉRALE --- */
-html,
-body {
-  height: 100%; /* Force la hauteur totale */
+/* ── Reset & base ────────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body {
+  height: 100%;
   margin: 0;
   padding: 0;
   display: flex;
-  flex-direction: column; /* Organisation verticale (Appli > Footer) */
-  overflow: hidden; /* Pas de scroll global sur la page */
-  background-color: #282a36; /* Thème Dracula */
-  color: #f8f8f2;
-  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  flex-direction: column;
+  overflow: hidden;
+  background: #fafaf8;
+  color: #1a1a1a;
+  font-family: system-ui, -apple-system, sans-serif;
+  font-size: 15px;
 }
 
-/* --- CONTENEUR PRINCIPAL (ÉDITEUR + ÉNONCÉ) --- */
+a { text-decoration: none; color: inherit; }
+
+/* ── Header ──────────────────────────────────────────────────────────────── */
+header {
+  background: #1e3a5f;
+  color: #fff;
+  padding: 0 1.5rem;
+  flex-shrink: 0;
+  z-index: 100;
+}
+.header-inner {
+  max-width: 1300px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 54px;
+}
+.site-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: .01em;
+}
+.header-back {
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(255,255,255,.85);
+  padding: 6px 12px;
+  border-radius: 6px;
+  border: 1px solid rgba(255,255,255,.25);
+  transition: background .15s;
+}
+.header-back:hover { background: rgba(255,255,255,.12); }
+
+/* ── Conteneur principal (éditeur + énoncé) ─────────────────────────────── */
 .container.top-row {
-  flex: 1; /* occupe tout l'espace disponible */
+  flex: 1;
   display: flex;
   width: 100%;
-  gap: 10px;
-  padding: 0;
-  height: 0; /* clé pour que minmax fonctionne */
-  min-height: 0; /* empêche l'étirement */
+  max-width: 1300px;
+  margin: 0 auto;
+  gap: 1rem;
+  padding: 1rem 1.5rem;
+  height: 0;
+  min-height: 0;
+  box-sizing: border-box;
 }
 
-/* --- ZONES (GAUCHE ET DROITE) --- */
+/* ── Zones (gauche et droite) ────────────────────────────────────────────── */
 .code-area {
   flex: 1;
   display: grid;
   grid-template-rows: auto minmax(0, 1fr) auto;
-  border: 1px solid #6272a4;
-  background-color: #44475a;
-  padding: 10px;
+  border: 1px solid #e0e0d8;
+  background: #fff;
+  border-radius: 10px;
+  padding: 1rem;
   box-sizing: border-box;
   overflow: hidden;
-  min-height: 0; /* empêche le débordement */
+  min-height: 0;
 }
 
 .code-area.editor {
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr) auto; /* Titre / Éditeur / Boutons */
+  grid-template-rows: auto minmax(0, 1fr) auto;
   overflow: hidden;
 }
 
-/* --- NOUVEAU : BARRE D'ENTÊTE (Pour la colonne de droite) --- */
+.code-area h3 {
+  margin: 0 0 .75rem;
+  font-size: 15px;
+  font-weight: 700;
+  color: #1e3a5f;
+}
+
+/* ── Barre d'entête (colonne de droite) ──────────────────────────────────── */
 .exercises-top-bar {
   display: flex;
-  justify-content: space-between; /* Titre à gauche, Boutons à droite */
-  align-items: center; /* Centrage vertical */
-  border-bottom: 1px solid #6272a4;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: .5rem;
+  border-bottom: 1px solid #e0e0d8;
   margin-bottom: 15px;
   padding-bottom: 10px;
   min-height: 50px;
 }
 
 .exercises-top-bar h3 {
-  margin: 0; /* Enlève les marges pour bien aligner */
+  margin: 0;
   border: none;
 }
 
 .header-buttons {
   display: flex;
-  gap: 10px; /* Espace entre les boutons */
+  gap: 10px;
   align-items: center;
 }
 
-/* --- ÉDITEUR CODEMIRROR --- */
+/* ── Éditeur CodeMirror ──────────────────────────────────────────────────── */
 .CodeMirror {
-  height: 100% !important; /* Remplit sa case à 100% */
-  overflow-y: auto; /* Scroll si code trop long */
-  scrollbar-gutter: stable; /* Évite le décalage quand la barre apparaît */
-  border: 1px solid #6272a4;
+  height: 100% !important;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+  border: 1px solid #1e3a5f;
   font-size: 16px;
-  border-radius: 4px;
+  border-radius: 6px;
 }
 
 /* Zone Énoncé */
 .code-area.statement {
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr); /* Titre / Contenu */
+  grid-template-rows: auto minmax(0, 1fr);
   overflow: hidden;
-  font-size: 1.1em;
+  font-size: 1.05em;
 }
 
-/* --- CONTENEUR ÉNONCÉ --- */
-
+/* ── Conteneur énoncé ────────────────────────────────────────────────────── */
 #exerciseContainer {
   overflow-y: auto;
   scrollbar-gutter: stable;
   padding-right: 5px;
-  min-height: 0; /* empêche l'étirement */
+  min-height: 0;
+  color: #1a1a1a;
 }
-/* --- BOUTONS --- */
-/* Zone boutons colonne gauche */
+
+/* ── Boutons ─────────────────────────────────────────────────────────────── */
 .buttons-row {
   margin-top: 10px;
   display: flex;
   gap: 10px;
-  /* 🛡️ SÉCURITÉ : Interdit au navigateur d'écraser cette zone */
   flex-shrink: 0;
-  min-height: 50px; /* On réserve une taille minimum pour les boutons */
+  min-height: 50px;
 }
 
-/* Style commun des boutons */
 button {
   cursor: pointer;
   border: none;
-  border-radius: 4px;
-  font-weight: bold;
-  transition: all 0.2s ease;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+  border-radius: 8px;
+  font-weight: 600;
+  font-family: inherit;
+  transition: background .15s, border-color .15s, transform .15s, box-shadow .15s;
 }
 
-button:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 8px rgba(0, 0, 0, 0.3);
-}
+button:hover { transform: translateY(-1px); }
 
-/* 1. Bouton "Tester le code" (Vert) */
+/* Bouton "Tester le code" (succès) */
 #runButton {
-  background-color: #50fa7b;
-  color: #282a36;
-  font-size: 1.2em;
+  background: #16a34a;
+  color: #fff;
+  font-size: 1.05em;
   padding: 12px 24px;
   flex: 1;
 }
+#runButton:hover { background: #128a3e; }
 
-/* Bouton "Soumettre ma réponse" (Orange) */
+/* Bouton "Soumettre ma réponse" (primaire) */
 #submitButton {
-  background-color: #ffb86c;
-  color: #282a36;
-  font-size: 1.2em;
+  background: #1e3a5f;
+  color: #fff;
+  font-size: 1.05em;
   padding: 12px 24px;
   flex: 1;
 }
-
-#submitButton:hover {
-  background-color: #ff9500;
-}
+#submitButton:hover { background: #16304f; }
 
 #submitButton:disabled {
-  background-color: #44475a;
-  color: #6272a4;
+  background: #e5e7eb;
+  color: #9ca3af;
   cursor: not-allowed;
   transform: none;
   box-shadow: none;
 }
 
-#runButton:hover {
-  background-color: #049328;
-}
-
-/* 2. Bouton "Nouvel Exercice" (Bleu) */
+/* Bouton "Nouvel Exercice" (primaire) */
 #newExerciseButton {
-  background-color: #4d61d5;
-  color: #f8f8f2;
-  font-size: 1.1em; /* ⭐ Police augmentée */
-  padding: 10px 20px; /* ⭐ Bouton plus gros */
+  background: #1e3a5f;
+  color: #fff;
+  font-size: 14px;
+  padding: 10px 20px;
+}
+#newExerciseButton:hover { background: #16304f; }
+
+/* Bouton "Assistant" (accent secondaire) */
+#assistantButton {
+  background: #0369a1;
+  color: #fff;
+  font-size: 14px;
+  padding: 10px 20px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+#assistantButton:hover { background: #035180; }
+
+#assistantButton img {
+  display: block;
 }
 
-#newExerciseButton:hover {
-  background-color: #3020c4;
-}
-
-/* 3. Bouton "Assistant" et "Fermer" (Mauve) */
-
+/* Boutons "Fermer" des modales (neutre) */
 #closeModalButton,
 #closeExecutionButton,
 #closeTopicButton {
-  background-color: #bd93f9;
-  color: #282a36;
-  padding: 5px 15px; /* Taille standard */
+  background: #fff;
+  color: #374151;
+  border: 1.5px solid #d1d5db;
+  padding: 8px 18px;
+  font-size: 13px;
 }
-#assistantButton {
-  background-color: #bd93f9; /* On garde la couleur mauve */
-  color: #282a36;
-
-  /* 👇 ICI : On copie les dimensions de "Nouvel Exercice" */
-  font-size: 1.1em;
-  padding: 10px 20px;
-}
-#assistantButton:hover,
 #closeModalButton:hover,
 #closeExecutionButton:hover,
 #closeTopicButton:hover {
-  background-color: #ff79c6;
+  background: #f3f4f6;
 }
 
-#assistantButton img {
-  display: block; /* Enlève l'espace parasite sous l'image */
-}
-
-/* --- MODALES (POP-UP) --- */
+/* ── Modales (pop-up) ────────────────────────────────────────────────────── */
 .modal {
   display: none;
   position: fixed;
@@ -199,64 +239,64 @@ button:hover {
   top: 0;
   width: 100%;
   height: 100%;
-  background-color: rgba(0, 0, 0, 0.7); /* Fond noir foncé */
-  backdrop-filter: blur(2px); /* Petit effet de flou derrière */
+  background: rgba(0,0,0,.45);
 }
 
 .modal-content {
-  background-color: #282a36;
-  color: #f8f8f2;
-  /* Positionnement et Taille */
-  margin: 5% auto; /* 5% du haut */
+  background: #fff;
+  color: #1a1a1a;
+  margin: 5% auto;
   width: 80%;
   max-width: 900px;
-  height: 80%; /* Hauteur fixe relative à l'écran */
-  border: 2px solid #bd93f9;
-  border-radius: 8px;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+  height: 80%;
+  border: 1px solid #e0e0d8;
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0,0,0,.18);
   display: flex;
   flex-direction: column;
-  overflow: hidden; /* Empêche le contenu de déborder */
+  overflow: hidden;
 }
 
 .modal-content h3 {
-  margin-top: 0;
-  color: #bd93f9;
-  border-bottom: 1px solid #44475a;
-  padding-bottom: 15px;
+  margin: 0;
+  padding: 1.25rem 1.5rem 1rem;
+  color: #1e3a5f;
+  font-size: 1.05rem;
+  border-bottom: 1px solid #e0e0d8;
 }
 
 #assistantContent {
-  flex: 1; /* Prend tout l'espace central */
-  overflow-y: auto; /* Scroll uniquement ici */
-  padding: 10px;
-  font-size: 1.1em;
-  line-height: 1.5;
+  flex: 1;
+  overflow-y: auto;
+  padding: 1.25rem 1.5rem;
+  font-size: 1.05em;
+  line-height: 1.6;
+  color: #1a1a1a;
 }
 
 .modal-footer {
   margin-top: 0;
-  padding: 15px;
-  background-color: #282a36;
-  border-top: 1px solid #44475a;
-  flex-shrink: 0; /* Ne s'écrase jamais */
+  padding: 1rem 1.5rem;
+  background: #fafaf8;
+  border-top: 1px solid #e0e0d8;
+  flex-shrink: 0;
   text-align: right;
 }
 
-/* --- STYLES MARKDOWN (ÉNONCÉ & ASSISTANT) --- */
+/* ── Styles markdown (énoncé & assistant) ────────────────────────────────── */
 .markdown-content,
 #assistantContent {
-  color: #f8f8f2;
+  color: #1a1a1a;
 }
 
 .markdown-content h4 {
-  color: #ff79c6;
+  color: #1e3a5f;
   font-size: 1.1em;
   margin-top: 15px;
 }
 
 .markdown-content strong {
-  color: #50fa7b;
+  color: #0369a1;
 }
 
 .markdown-content ul {
@@ -264,41 +304,32 @@ button:hover {
 }
 
 .markdown-content pre {
-  background: #21222c;
+  background: #f3f4f6;
+  border: 1px solid #e0e0d8;
   padding: 10px;
-  border-radius: 4px;
+  border-radius: 6px;
   overflow-x: auto;
 }
 
-/* --- SCORE DISPLAY --- */
+/* ── Score ───────────────────────────────────────────────────────────────── */
 .score-display {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  background-color: #44475a;
-  border: 1px solid #6272a4;
+  background: #f0f4fb;
+  border: 1px solid #c7d2e8;
   border-radius: 20px;
   padding: 4px 12px;
-  font-size: 0.9em;
-  font-weight: bold;
+  font-size: .9em;
+  font-weight: 700;
 }
 
-.score-correct {
-  color: #50fa7b;
-}
-.score-sep {
-  color: #6272a4;
-}
-.score-total {
-  color: #f8f8f2;
-}
-.score-pct {
-  color: #bd93f9;
-  font-size: 0.85em;
-  margin-left: 2px;
-}
+.score-correct { color: #16a34a; }
+.score-sep     { color: #9ca3af; }
+.score-total   { color: #1a1a1a; }
+.score-pct     { color: #1e3a5f; font-size: .85em; margin-left: 2px; }
 
-/* --- POINTS FAIBLES --- */
+/* ── Points faibles ──────────────────────────────────────────────────────── */
 .weak-points-section {
   padding: 0 20px 10px;
 }
@@ -308,8 +339,8 @@ button:hover {
   align-items: center;
   gap: 10px;
   margin: 5px 0 15px;
-  color: #6272a4;
-  font-size: 0.85em;
+  color: #9ca3af;
+  font-size: .85em;
 }
 
 .weak-points-divider::before,
@@ -317,52 +348,51 @@ button:hover {
   content: "";
   flex: 1;
   height: 1px;
-  background-color: #44475a;
+  background: #e0e0d8;
 }
 
 .weak-points-btn {
-  background-color: #282a36 !important;
-  border: 2px dashed #ffb86c !important;
-  color: #ffb86c !important;
+  background: #fff !important;
+  border: 2px dashed #d97706 !important;
+  color: #d97706 !important;
 }
 
 .weak-points-btn:hover:not(:disabled) {
-  background-color: rgba(255, 184, 108, 0.1) !important;
+  background: #fffbeb !important;
   border-style: solid !important;
 }
 
 .weak-points-btn:disabled {
-  border-color: #44475a !important;
-  color: #6272a4 !important;
+  border-color: #e5e7eb !important;
+  color: #9ca3af !important;
   cursor: not-allowed;
   transform: none;
   box-shadow: none;
 }
 
-/* --- VERDICTS DE VALIDATION --- */
+/* ── Verdicts de validation ──────────────────────────────────────────────── */
 .verdict {
-  font-size: 1.4em;
-  font-weight: bold;
+  font-size: 1.3em;
+  font-weight: 700;
   text-align: center;
   padding: 15px;
-  border-radius: 6px;
+  border-radius: 8px;
   margin-bottom: 15px;
 }
 
 .verdict-correct {
-  background-color: rgba(80, 250, 123, 0.15);
-  border: 2px solid #50fa7b;
-  color: #50fa7b;
+  background: #dcfce7;
+  border: 2px solid #16a34a;
+  color: #15803d;
 }
 
 .verdict-incorrect {
-  background-color: rgba(255, 85, 85, 0.15);
-  border: 2px solid #ff5555;
-  color: #ff5555;
+  background: #fee2e2;
+  border: 2px solid #fca5a5;
+  color: #dc2626;
 }
 
-/* --- FOOTER (PIED DE PAGE) --- */
-
+/* ── Footer ──────────────────────────────────────────────────────────────── */
 footer p {
   margin: 0;
   text-align: center;
@@ -370,104 +400,287 @@ footer p {
 }
 footer {
   flex-shrink: 0;
-  font-size: 0.8em;
-  color: #dedede;
-  background-color: #282a36;
-  border-top: 1px solid #bd93f9;
-  padding: 5px;
+  font-size: 12px;
+  color: rgba(255,255,255,.65);
+  background: #1e3a5f;
+  padding: .75rem;
   text-align: center;
 }
-/* --- Sélecteur de difficulté --- */
+
+/* ── Sélecteur de difficulté ─────────────────────────────────────────────── */
 .difficulty-selector {
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-wrap: wrap;
   gap: 8px;
   padding: 15px 20px 5px;
 }
 
 .difficulty-label {
-  color: #f8f8f2;
-  font-weight: bold;
+  color: #1a1a1a;
+  font-weight: 700;
   margin-right: 4px;
 }
 
 .difficulty-btn {
-  background-color: #44475a;
-  color: #f8f8f2;
+  background: #f3f4f6;
+  color: #374151;
   padding: 6px 14px;
-  font-size: 0.9em;
+  font-size: .9em;
   border: 2px solid transparent;
   border-radius: 20px;
 }
 
-.difficulty-btn:hover {
-  transform: translateY(-1px);
-}
+.difficulty-btn:hover { transform: translateY(-1px); }
 
 .difficulty-btn.active[data-level="débutant"] {
-  background-color: rgba(80, 250, 123, 0.15);
-  border-color: #50fa7b;
-  color: #50fa7b;
+  background: #dcfce7;
+  border-color: #16a34a;
+  color: #15803d;
 }
 
 .difficulty-btn.active[data-level="intermédiaire"] {
-  background-color: rgba(241, 250, 140, 0.15);
-  border-color: #f1fa8c;
-  color: #f1fa8c;
+  background: #fef3c7;
+  border-color: #d97706;
+  color: #92400e;
 }
 
 .difficulty-btn.active[data-level="avancé"] {
-  background-color: rgba(255, 85, 85, 0.15);
-  border-color: #ff5555;
-  color: #ff5555;
+  background: #fee2e2;
+  border-color: #dc2626;
+  color: #dc2626;
 }
 
-/* --- Badges de difficulté dans l'énoncé --- */
+/* ── Badges de difficulté dans l'énoncé ──────────────────────────────────── */
 .difficulty-badge {
   display: inline-block;
-  font-size: 0.85em;
-  font-weight: bold;
+  font-size: .85em;
+  font-weight: 700;
   padding: 3px 10px;
   border-radius: 12px;
   margin-bottom: 12px;
 }
 
 .badge-debutant {
-  background-color: rgba(80, 250, 123, 0.15);
-  border: 1px solid #50fa7b;
-  color: #50fa7b;
+  background: #dcfce7;
+  border: 1px solid #16a34a;
+  color: #15803d;
 }
 
 .badge-intermediaire {
-  background-color: rgba(241, 250, 140, 0.15);
-  border: 1px solid #f1fa8c;
-  color: #f1fa8c;
+  background: #fef3c7;
+  border: 1px solid #d97706;
+  color: #92400e;
 }
 
 .badge-avance {
-  background-color: rgba(255, 85, 85, 0.15);
-  border: 1px solid #ff5555;
-  color: #ff5555;
+  background: #fee2e2;
+  border: 1px solid #dc2626;
+  color: #dc2626;
 }
 
-/* --- NOUVEAU : Styles pour la modale de choix --- */
+/* ── Modale de choix de sujet ────────────────────────────────────────────── */
 .topic-buttons-container {
   display: flex;
   flex-direction: column;
-  gap: 15px;
+  gap: 12px;
   padding: 20px;
 }
 
 .topic-btn {
-  background-color: #6272a4; /* Couleur Dracula intermédiaire */
-  color: white;
+  background: #fff;
+  color: #1e3a5f;
+  border: 1px solid #e0e0d8;
+  border-radius: 10px;
   padding: 15px;
-  font-size: 1.1em;
-  border: 1px solid #bd93f9;
+  font-size: 1.05em;
+  font-weight: 600;
+  transition: background .15s, box-shadow .15s, transform .15s;
 }
 
 .topic-btn:hover {
-  background-color: #bd93f9;
-  color: #282a36;
+  background: #eef2ff;
+  box-shadow: 0 2px 10px rgba(0,0,0,.09);
+}
+
+/* ═══ Page d'accueil (landing) ═══════════════════════════════════════════ */
+
+.landing-wrapper {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem 3rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.75rem;
+  flex: 1;
+  width: 100%;
+}
+
+/* ── Logos ───────────────────────────────────────────────────────────────── */
+.logos-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 36px;
+  flex-wrap: wrap;
+}
+
+.logos-row img {
+  height: 56px;
+  object-fit: contain;
+  border-radius: 6px;
+}
+
+/* ── Titre ───────────────────────────────────────────────────────────────── */
+.landing-title {
+  text-align: center;
+}
+
+.landing-title h1 {
+  font-size: 26px;
+  font-weight: 700;
+  color: #1e3a5f;
+  margin: 0 0 4px;
+}
+
+.landing-title p.subtitle {
+  color: #6b7280;
+  font-size: 14px;
+  margin: 0;
+}
+
+/* ── Cartes fonctionnalités ──────────────────────────────────────────────── */
+.features-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 1rem;
+  width: 100%;
+}
+
+.feature-card {
+  background: #fff;
+  border: 1px solid #e0e0d8;
+  border-radius: 10px;
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  transition: background .15s, box-shadow .15s, transform .15s;
+}
+
+.feature-card:hover {
+  background: #eef2ff;
+  box-shadow: 0 2px 10px rgba(0,0,0,.09);
+  transform: translateY(-2px);
+}
+
+.feature-card .icon { font-size: 1.7em; }
+
+.feature-card h3 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: #1e3a5f;
+}
+
+.feature-card p {
+  margin: 0;
+  font-size: 13px;
+  color: #6b7280;
+  line-height: 1.5;
+}
+
+/* ── Comment ça marche ───────────────────────────────────────────────────── */
+.how-section {
+  width: 100%;
+}
+
+.how-section h2 {
+  color: #1e3a5f;
+  font-size: 15px;
+  font-weight: 700;
+  margin: 0 0 14px;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+
+.steps {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.step {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  background: #fff;
+  border: 1px solid #e0e0d8;
+  border-radius: 8px;
+  padding: 12px 16px;
+  border-left: 3px solid #1e3a5f;
+}
+
+.step-num {
+  background: #1e3a5f;
+  color: #fff;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  min-width: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: .85em;
+}
+
+.step p {
+  margin: 0;
+  font-size: 13px;
+  color: #1a1a1a;
+  line-height: 1.5;
+}
+
+.step p strong { color: #1e3a5f; }
+
+/* ── Bouton principal (CTA) ──────────────────────────────────────────────── */
+.cta-button {
+  display: inline-block;
+  background: #1e3a5f;
+  color: #fff;
+  font-weight: 700;
+  font-size: 1.05em;
+  padding: 13px 36px;
+  border-radius: 8px;
+  text-decoration: none;
+  border: none;
+  cursor: pointer;
+  transition: background .15s, transform .1s;
+  letter-spacing: .01em;
+}
+
+.cta-button:hover {
+  background: #16304f;
+  transform: translateY(-2px);
+}
+
+.cta-button:active { transform: translateY(0); }
+
+.cta-button.secondary {
+  background: #fff;
+  color: #1e3a5f;
+  border: 2px solid #1e3a5f;
+}
+
+.cta-button.secondary:hover {
+  background: #eef2ff;
+}
+
+/* ── Responsive ──────────────────────────────────────────────────────────── */
+@media (max-width: 700px) {
+  .container.top-row { flex-direction: column; padding: 1rem; }
+  .landing-title h1 { font-size: 22px; }
 }

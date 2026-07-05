@@ -257,7 +257,7 @@ async function generateExercise(specificInstructions = "") {
   if (newExerciseButton) newExerciseButton.disabled = true;
 
   exerciseContainer.innerHTML =
-    '<p style="color: #e15c37ff;">Création de l\'exercice en cours... 🤖</p><p style="color: #e15c37ff;">Merci de patienter quelques secondes...</p>';
+    '<p style="color: #1e3a5f;">Création de l\'exercice en cours... 🤖</p><p style="color: #1e3a5f;">Merci de patienter quelques secondes...</p>';
 
   // Le prompt "Système" reste le cadre général (Persona + Format de réponse)
   // J'ai retiré la partie "Contexte" pour la laisser au fichier texte spécifique
@@ -335,7 +335,7 @@ async function generateExercise(specificInstructions = "") {
     codeMirrorInstance.setValue(codePart);
   } catch (error) {
     console.error(error);
-    exerciseContainer.innerHTML = `<p style="color: red;">Erreur API. Ça arrive... Regénère l'exercice !</p>`;
+    exerciseContainer.innerHTML = `<p style="color: #dc2626;">Erreur API. Ça arrive... Regénère l'exercice !</p>`;
   } finally {
     if (newExerciseButton) newExerciseButton.disabled = false;
   }
@@ -348,7 +348,7 @@ async function validateCode() {
 
   assistantModal.style.display = "block";
   assistantContent.innerHTML =
-    '<p style="color: #ffb86c; text-align: center; margin-top: 50px;">Évaluation de ta réponse en cours... ⏳</p>';
+    '<p style="color: #1e3a5f; text-align: center; margin-top: 50px;">Évaluation de ta réponse en cours... ⏳</p>';
 
   const studentCode = codeMirrorInstance.getValue();
 
@@ -385,7 +385,7 @@ ${studentCode}
     saveAttempt(isCorrect);
     assistantContent.innerHTML = verdictHtml + formatMarkdown(feedback);
   } catch (error) {
-    assistantContent.innerHTML = `<p style="color: #ff5555;">Erreur d'évaluation (${error.message})</p>`;
+    assistantContent.innerHTML = `<p style="color: #dc2626;">Erreur d'évaluation (${error.message})</p>`;
   }
 }
 
@@ -394,7 +394,7 @@ ${studentCode}
 async function askAssistant() {
   assistantModal.style.display = "block";
   assistantContent.innerHTML =
-    '<p style="color: #bd93f9; text-align: center; margin-top: 50px;">Analyse de ton code en cours... 🧐</p>';
+    '<p style="color: #1e3a5f; text-align: center; margin-top: 50px;">Analyse de ton code en cours... 🧐</p>';
 
   const studentCode = codeMirrorInstance.getValue();
   // Pour l'assistant, on garde le texte complet (currentExerciseText) s'il existe
@@ -423,7 +423,7 @@ ${studentCode}
     const result = await callGemini(systemPrompt, userQuery);
     assistantContent.innerHTML = formatMarkdown(result);
   } catch (error) {
-    assistantContent.innerHTML = `<p style="color: #ff5555;">Erreur d'analyse (${error.message})</p>`;
+    assistantContent.innerHTML = `<p style="color: #dc2626;">Erreur d'analyse (${error.message})</p>`;
   }
 }
 
@@ -448,7 +448,7 @@ function addErrorButton() {
   const btn = document.createElement("button");
   btn.id = "errorExplainBtn";
   btn.textContent = "Expliquer l'erreur 🚑";
-  btn.style.backgroundColor = "#ff5555";
+  btn.style.backgroundColor = "#dc2626";
   btn.style.color = "white";
   btn.style.marginRight = "10px";
   btn.onclick = explainError;
@@ -463,7 +463,7 @@ async function explainError() {
   executionModal.style.display = "none";
   assistantModal.style.display = "block";
   assistantContent.innerHTML =
-    '<p style="color: #bd93f9; text-align: center; margin-top: 50px;">Analyse de l\'erreur en cours... 🚑</p>';
+    '<p style="color: #1e3a5f; text-align: center; margin-top: 50px;">Analyse de l\'erreur en cours... 🚑</p>';
 
   const studentCode = codeMirrorInstance.getValue();
   const systemPrompt =
@@ -474,7 +474,7 @@ async function explainError() {
     const result = await callGemini(systemPrompt, userPrompt);
     assistantContent.innerHTML = formatMarkdown(result);
   } catch (error) {
-    assistantContent.innerHTML = `<p style="color: #ff5555;">Erreur d'analyse (${error.message})</p>`;
+    assistantContent.innerHTML = `<p style="color: #dc2626;">Erreur d'analyse (${error.message})</p>`;
   }
 }
 
