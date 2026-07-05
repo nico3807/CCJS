@@ -1,7 +1,7 @@
 <?php
 // proxy.php — la clé n'est visible que sur le serveur
-define('GEMINI_API_KEY', 'AIzaSyBV-BKJkTjOJg92DMqHhKEuNmu4am_5AVg'); //CCJS
-define('GEMINI_URL', 'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=' . GEMINI_API_KEY);
+define('CLAUDE_API_KEY', 'VOTRE_CLE_API_CLAUDE'); //CCJS
+define('CLAUDE_URL', 'https://api.anthropic.com/v1/messages');
 
 // Sécurité : on n'accepte que les requêtes POST depuis ton domaine
 header('Access-Control-Allow-Origin: https://web-mmi2.iutbeziers.fr/');
@@ -15,11 +15,15 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 // Récupère le payload envoyé par le navigateur
 $input = file_get_contents('php://input');
 
-// Transmet à Gemini
-$ch = curl_init(GEMINI_URL);
+// Transmet à Claude
+$ch = curl_init(CLAUDE_URL);
 curl_setopt($ch, CURLOPT_POST, true);
 curl_setopt($ch, CURLOPT_POSTFIELDS, $input);
-curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
+curl_setopt($ch, CURLOPT_HTTPHEADER, [
+    'Content-Type: application/json',
+    'x-api-key: ' . CLAUDE_API_KEY,
+    'anthropic-version: 2023-06-01',
+]);
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 $response = curl_exec($ch);
 curl_close($ch);

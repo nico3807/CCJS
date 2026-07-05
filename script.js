@@ -9,7 +9,6 @@ const codeMirrorInstance = CodeMirror.fromTextArea(editorElement, {
 });
 //
 
-//const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.0-pro:generateContent?key=${API_KEY}`;
 const API_URL =
   "https://web-mmi2.iutbeziers.fr/~nicolas.maurin1/CCJS/proxy.php";
 
@@ -294,7 +293,7 @@ async function generateExercise(specificInstructions = "") {
   ${specificInstructions}`;
 
   try {
-    const result = await callGemini(baseSystemPrompt, userQuery);
+    const result = await callClaude(baseSystemPrompt, userQuery);
     const text = result || "Erreur de génération.";
 
     currentExerciseText = text; // Sauvegarde pour l'assistant
@@ -371,7 +370,7 @@ ${studentCode}
 `;
 
   try {
-    const result = await callGemini(systemPrompt, userPrompt);
+    const result = await callClaude(systemPrompt, userPrompt);
 
     const isCorrect = result && result.includes("VERDICT: CORRECT");
     const feedback = result
@@ -420,7 +419,7 @@ ${studentCode}
 `;
 
   try {
-    const result = await callGemini(systemPrompt, userQuery);
+    const result = await callClaude(systemPrompt, userQuery);
     assistantContent.innerHTML = formatMarkdown(result);
   } catch (error) {
     assistantContent.innerHTML = `<p style="color: #dc2626;">Erreur d'analyse (${error.message})</p>`;
@@ -471,7 +470,7 @@ async function explainError() {
   const userPrompt = `Code de l'étudiant :\n${studentCode}\n\nErreur rencontrée :\n${lastError}`;
 
   try {
-    const result = await callGemini(systemPrompt, userPrompt);
+    const result = await callClaude(systemPrompt, userPrompt);
     assistantContent.innerHTML = formatMarkdown(result);
   } catch (error) {
     assistantContent.innerHTML = `<p style="color: #dc2626;">Erreur d'analyse (${error.message})</p>`;
@@ -480,14 +479,13 @@ async function explainError() {
 
 // --- 5. UTILITAIRES ---
 
-async function callGemini(systemPrompt, userPrompt) {
+async function callClaude(systemPrompt, userPrompt) {
   const payload = {
-    system_instruction: { parts: [{ text: systemPrompt }] },
-    contents: [{ role: "user", parts: [{ text: userPrompt }] }],
-    generationConfig: {
-      temperature: 1,
-      maxOutputTokens: 8192,
-    },
+    model: "claude-haiku-4-5",
+    max_tokens: 8192,
+    temperature: 1,
+    system: systemPrompt,
+    messages: [{ role: "user", content: userPrompt }],
   };
 
   let response;
@@ -523,7 +521,7 @@ async function callGemini(systemPrompt, userPrompt) {
   }
 
   const result = await response.json();
-  return result.candidates?.[0]?.content?.parts?.[0]?.text;
+  return result.content?.[0]?.text;
 }
 
 function formatMarkdown(text) {
