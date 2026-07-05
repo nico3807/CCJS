@@ -48,6 +48,10 @@ const topicLabels = {
   "for.txt": "Boucles For",
   "while.txt": "While",
   "tableaux.txt": "Tableaux",
+  "fonctions.txt": "Fonctions",
+  "objets.txt": "Objets",
+  "dom.txt": "DOM",
+  "evenements.txt": "Événements",
 };
 
 function getHistory() {
@@ -158,6 +162,7 @@ function saveExerciseState() {
       text: currentExerciseText,
       topic: currentTopic,
       difficulty: currentDifficulty,
+      id: currentExerciseId,
     }),
   );
 }
@@ -170,6 +175,7 @@ function restoreSession() {
       currentExerciseText = saved.text;
       currentTopic = saved.topic;
       currentDifficulty = saved.difficulty || "débutant";
+      currentExerciseId = saved.id || null;
       if (submitButton) submitButton.disabled = false;
     }
   } catch {
@@ -177,6 +183,103 @@ function restoreSession() {
   }
   const draft = localStorage.getItem(DRAFT_CODE_KEY);
   if (draft) codeMirrorInstance.setValue(draft);
+}
+
+// --- HISTORIQUE DES EXERCICES (revoir / refaire) ---
+
+const EXERCISES_KEY = "ccjs_exercises";
+const MAX_EXERCISES = 20;
+let currentExerciseId = null;
+
+function getExercises() {
+  try {
+    return JSON.parse(localStorage.getItem(EXERCISES_KEY) || "[]");
+  } catch {
+    return [];
+  }
+}
+
+function saveExerciseToHistory(html, code) {
+  const exercises = getExercises();
+  currentExerciseId = Date.now();
+  exercises.push({
+    id: currentExerciseId,
+    html,
+    code,
+    text: currentExerciseText,
+    topic: currentTopic,
+    topicLabel: topicLabels[currentTopic] || "Points faibles",
+    difficulty: currentDifficulty,
+    timestamp: currentExerciseId,
+    result: null,
+  });
+  if (exercises.length > MAX_EXERCISES)
+    exercises.splice(0, exercises.length - MAX_EXERCISES);
+  localStorage.setItem(EXERCISES_KEY, JSON.stringify(exercises));
+}
+
+function markExerciseResult(isCorrect) {
+  if (!currentExerciseId) return;
+  const exercises = getExercises();
+  const entry = exercises.find((e) => e.id === currentExerciseId);
+  // On ne rétrograde jamais un exercice déjà réussi
+  if (entry && entry.result !== "correct") {
+    entry.result = isCorrect ? "correct" : "incorrect";
+    localStorage.setItem(EXERCISES_KEY, JSON.stringify(exercises));
+  }
+}
+
+function renderHistoryList() {
+  const list = document.getElementById("historyList");
+  if (!list) return;
+  const exercises = getExercises().slice().reverse();
+
+  if (exercises.length === 0) {
+    list.innerHTML =
+      '<p class="history-empty">Aucun exercice pour l\'instant. Clique sur "Nouvel Exercice" pour commencer !</p>';
+    return;
+  }
+
+  const badgeClasses = {
+    débutant: "badge-debutant",
+    intermédiaire: "badge-intermediaire",
+    avancé: "badge-avance",
+  };
+  const resultIcons = { correct: "✅", incorrect: "❌" };
+
+  list.innerHTML = exercises
+    .map((e) => {
+      const d = new Date(e.timestamp);
+      const date =
+        d.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" }) +
+        " " +
+        d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+      return `
+        <div class="history-row">
+          <span class="history-result">${resultIcons[e.result] || "▫️"}</span>
+          <span class="history-topic">${e.topicLabel}</span>
+          <span class="difficulty-badge ${badgeClasses[e.difficulty] || ""}">${e.difficulty}</span>
+          <span class="history-date">${date}</span>
+          <button class="history-retry" onclick="retryExercise(${e.id})">↻ Refaire</button>
+        </div>`;
+    })
+    .join("");
+}
+
+function retryExercise(id) {
+  const entry = getExercises().find((e) => e.id === id);
+  if (!entry) return;
+
+  exerciseContainer.innerHTML = entry.html;
+  codeMirrorInstance.setValue(entry.code);
+  currentExerciseText = entry.text;
+  currentTopic = entry.topic;
+  currentDifficulty = entry.difficulty;
+  currentExerciseId = entry.id;
+  sessionErrors = [];
+  if (submitButton) submitButton.disabled = false;
+  saveExerciseState();
+  document.getElementById("historyModal").style.display = "none";
 }
 
 async function generateWeakPointsExercise() {
@@ -423,6 +526,7 @@ async function generateExercise(specificInstructions = "") {
       instructionsPart,
     )}</div>`;
     codeMirrorInstance.setValue(codePart);
+    saveExerciseToHistory(exerciseContainer.innerHTML, codePart);
     saveExerciseState();
   } catch (error) {
     console.error(error);
@@ -475,6 +579,7 @@ ${studentCode}
       : `<div class="verdict verdict-incorrect">❌ Pas tout à fait...</div>`;
 
     saveAttempt(isCorrect);
+    markExerciseResult(isCorrect);
     assistantContent.innerHTML = verdictHtml + formatMarkdown(feedback);
     if (isCorrect) launchConfetti();
   } catch (error) {
@@ -720,16 +825,35 @@ if (closeTopicButton) {
   });
 }
 
+// Historique des exercices
+const historyModal = document.getElementById("historyModal");
+const historyButton = document.getElementById("historyButton");
+if (historyButton) {
+  historyButton.addEventListener("click", () => {
+    renderHistoryList();
+    historyModal.style.display = "block";
+  });
+}
+const closeHistoryButton = document.getElementById("closeHistoryButton");
+if (closeHistoryButton) {
+  closeHistoryButton.addEventListener("click", () => {
+    historyModal.style.display = "none";
+  });
+}
+
 // Fermeture des modales en cliquant en dehors ou avec Échap
 window.onclick = function (event) {
   if (event.target == assistantModal) closeAssistant();
   if (event.target == topicModal) topicModal.style.display = "none";
+  if (event.target == historyModal) historyModal.style.display = "none";
 };
 
 document.addEventListener("keydown", (event) => {
   if (event.key !== "Escape") return;
   if (assistantModal.style.display === "block") closeAssistant();
   if (topicModal.style.display === "block") topicModal.style.display = "none";
+  if (historyModal && historyModal.style.display === "block")
+    historyModal.style.display = "none";
 });
 
 if (submitButton) submitButton.addEventListener("click", validateCode);

@@ -2,6 +2,7 @@
 <html lang="fr">
   <head>
     <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Code Coach JS</title>
     <link
       rel="stylesheet"
@@ -47,6 +48,7 @@
           <div class="header-buttons">
             <button id="newExerciseButton">Nouvel Exercice</button>
             <button id="assistantButton">Assistant</button>
+            <button id="historyButton" title="Revoir mes anciens exercices">📜</button>
           </div>
         </div>
         <div id="exerciseContainer">
@@ -106,6 +108,22 @@
             <span class="topic-label">Tableaux</span>
             <span class="topic-progress"></span>
           </button>
+          <button onclick="loadPromptAndRun('fonctions.txt')" class="topic-btn" data-topic="fonctions.txt">
+            <span class="topic-label">Fonctions</span>
+            <span class="topic-progress"></span>
+          </button>
+          <button onclick="loadPromptAndRun('objets.txt')" class="topic-btn" data-topic="objets.txt">
+            <span class="topic-label">Objets</span>
+            <span class="topic-progress"></span>
+          </button>
+          <button onclick="loadPromptAndRun('dom.txt')" class="topic-btn" data-topic="dom.txt">
+            <span class="topic-label">Manipulation du DOM</span>
+            <span class="topic-progress"></span>
+          </button>
+          <button onclick="loadPromptAndRun('evenements.txt')" class="topic-btn" data-topic="evenements.txt">
+            <span class="topic-label">Événements (clic...)</span>
+            <span class="topic-progress"></span>
+          </button>
         </div>
         <div class="weak-points-section">
           <div class="weak-points-divider"><span>ou</span></div>
@@ -115,6 +133,18 @@
         </div>
         <div class="modal-footer">
           <button id="closeTopicButton">Annuler</button>
+        </div>
+      </div>
+    </div>
+    <!-- Modale Historique des exercices -->
+    <div id="historyModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="historyModalTitle">
+      <div class="modal-content" style="max-width: 640px">
+        <h3 id="historyModalTitle">Mes derniers exercices 📜</h3>
+        <div id="historyList">
+          <!-- Rempli par script.js -->
+        </div>
+        <div class="modal-footer">
+          <button id="closeHistoryButton">Fermer</button>
         </div>
       </div>
     </div>
