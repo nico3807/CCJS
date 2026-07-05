@@ -119,10 +119,55 @@ header {
   height: 100% !important;
   overflow-y: auto;
   scrollbar-gutter: stable;
-  border: 1px solid #1e3a5f;
+  border: 1px solid #e0e0d8;
   font-size: 16px;
   border-radius: 6px;
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
 }
+
+/* Thème CodeMirror "gestion" — reprend la charte navy/blanc de l'application */
+.cm-s-gestion.CodeMirror {
+  background: #fff;
+  color: #1a1a1a;
+}
+.cm-s-gestion .CodeMirror-gutters {
+  background: #fafaf8;
+  border-right: 1px solid #e0e0d8;
+}
+.cm-s-gestion .CodeMirror-linenumber { color: #9ca3af; }
+.cm-s-gestion .CodeMirror-cursor { border-left: 1.5px solid #1e3a5f; }
+.cm-s-gestion .CodeMirror-activeline-background { background: #f5f7fb; }
+.cm-s-gestion div.CodeMirror-selected { background: #dbe4f3; }
+.cm-s-gestion .CodeMirror-line::selection,
+.cm-s-gestion .CodeMirror-line > span::selection,
+.cm-s-gestion .CodeMirror-line > span > span::selection { background: #dbe4f3; }
+.cm-s-gestion .CodeMirror-matchingbracket {
+  color: #16a34a !important;
+  font-weight: 700;
+  background: #dcfce7;
+}
+
+.cm-s-gestion .cm-keyword    { color: #1e3a5f; font-weight: 700; }
+.cm-s-gestion .cm-atom       { color: #0369a1; }
+.cm-s-gestion .cm-number     { color: #d97706; }
+.cm-s-gestion .cm-def        { color: #0369a1; }
+.cm-s-gestion .cm-variable   { color: #1a1a1a; }
+.cm-s-gestion .cm-variable-2 { color: #1e3a5f; }
+.cm-s-gestion .cm-variable-3,
+.cm-s-gestion .cm-type       { color: #0369a1; }
+.cm-s-gestion .cm-property   { color: #1e3a5f; }
+.cm-s-gestion .cm-operator   { color: #374151; }
+.cm-s-gestion .cm-comment    { color: #6b7280; font-style: italic; }
+.cm-s-gestion .cm-string,
+.cm-s-gestion .cm-string-2   { color: #16a34a; }
+.cm-s-gestion .cm-meta       { color: #6b7280; }
+.cm-s-gestion .cm-qualifier  { color: #6b7280; }
+.cm-s-gestion .cm-builtin    { color: #0369a1; }
+.cm-s-gestion .cm-bracket    { color: #6b7280; }
+.cm-s-gestion .cm-tag        { color: #dc2626; }
+.cm-s-gestion .cm-attribute  { color: #0369a1; }
+.cm-s-gestion .cm-error      { color: #dc2626; background: #fee2e2; }
+.cm-s-gestion .cm-invalidchar { color: #dc2626; }
 
 /* Zone Énoncé */
 .code-area.statement {

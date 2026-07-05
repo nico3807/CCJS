@@ -4,7 +4,7 @@ const editorElement = document.getElementById("editor");
 const codeMirrorInstance = CodeMirror.fromTextArea(editorElement, {
   lineNumbers: true,
   mode: "javascript",
-  theme: "dracula",
+  theme: "gestion",
   lineWrapping: true,
 });
 //
