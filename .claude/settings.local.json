@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cp \"c:/Users/Nicolas/kDrive/1- IUT/1- MMI1/1- R112 - Dev Web/1- JS/exercices_entrainement_JS/index.html\" \"c:/Users/Nicolas/kDrive/1- IUT/1- MMI1/1- R112 - Dev Web/1- JS/exercices_entrainement_JS/ccjs.html\")",
+      "Bash(rm \"c:/Users/Nicolas/kDrive/1- IUT/1- MMI1/1- R112 - Dev Web/1- JS/exercices_entrainement_JS/index.html\")"
+    ]
+  }
+}

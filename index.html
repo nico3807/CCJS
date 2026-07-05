@@ -1,0 +1,314 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Code Coach JS — Accueil</title>
+    <link rel="stylesheet" href="./style.css" />
+    <style>
+      /* Overrides pour la page d'accueil (scroll autorisé) */
+      html,
+      body {
+        overflow: auto;
+        height: auto;
+        min-height: 100%;
+      }
+
+      .landing-wrapper {
+        max-width: 860px;
+        margin: 0 auto;
+        padding: 15px 24px 32px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 15px;
+        flex: 1;
+      }
+
+      /* --- Logos --- */
+      .logos-row {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 36px;
+        flex-wrap: wrap;
+      }
+
+      .logos-row img {
+        height: 64px;
+        object-fit: contain;
+        filter: brightness(0.95);
+      }
+
+      /* --- Titre --- */
+      .landing-title {
+        text-align: center;
+      }
+
+      .landing-title h1 {
+        font-size: 2.4em;
+        color: #bd93f9;
+        margin: 0 0 3px;
+        letter-spacing: 1px;
+      }
+
+      .landing-title p.subtitle {
+        color: #6272a4;
+        font-size: 1.05em;
+        margin: 0;
+      }
+
+      /* --- Cards fonctionnalités --- */
+      .features-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+        gap: 15px;
+        width: 100%;
+      }
+
+      .feature-card {
+        background-color: #44475a;
+        border: 1px solid #6272a4;
+        border-radius: 10px;
+        padding: 20px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      .feature-card .icon {
+        font-size: 1.8em;
+      }
+
+      .feature-card h3 {
+        margin: 0;
+        font-size: 1em;
+        color: #f8f8f2;
+        border: none;
+      }
+
+      .feature-card p {
+        margin: 0;
+        font-size: 0.88em;
+        color: #a0a8c0;
+        line-height: 1.5;
+      }
+
+      /* --- Comment ça marche --- */
+      .how-section {
+        width: 100%;
+      }
+
+      .how-section h2 {
+        color: #ffb86c;
+        font-size: 1.1em;
+        margin: 0 0 14px;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+      }
+
+      .steps {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+
+      .step {
+        display: flex;
+        align-items: flex-start;
+        gap: 14px;
+        background-color: #44475a;
+        border-radius: 8px;
+        padding: 12px 16px;
+        border-left: 3px solid #bd93f9;
+      }
+
+      .step-num {
+        background-color: #bd93f9;
+        color: #282a36;
+        border-radius: 50%;
+        width: 24px;
+        height: 24px;
+        min-width: 24px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        font-size: 0.85em;
+      }
+
+      .step p {
+        margin: 0;
+        font-size: 0.92em;
+        color: #f8f8f2;
+        line-height: 1.5;
+      }
+
+      .step p strong {
+        color: #bd93f9;
+      }
+
+      /* --- Bouton principal --- */
+      .cta-button {
+        display: inline-block;
+        background-color: #50fa7b;
+        color: #282a36;
+        font-weight: bold;
+        font-size: 1.1em;
+        padding: 14px 40px;
+        border-radius: 8px;
+        text-decoration: none;
+        border: none;
+        cursor: pointer;
+        transition:
+          background-color 0.2s,
+          transform 0.1s;
+        letter-spacing: 0.5px;
+      }
+
+      .cta-button:hover {
+        background-color: #69ff94;
+        transform: translateY(-2px);
+      }
+
+      .cta-button:active {
+        transform: translateY(0);
+      }
+
+      /* --- Footer --- */
+      footer {
+        margin-top: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="landing-wrapper">
+      <!-- Titre -->
+      <div class="landing-title">
+        <h1>⚡Code Coach JS⚡</h1>
+        <p class="subtitle">
+          Ton assistant personnel pour progresser en JavaScript
+        </p>
+      </div>
+
+      <!-- Fonctionnalités -->
+      <div class="features-grid">
+        <div class="feature-card">
+          <span class="icon">🤖</span>
+          <h3>Exercices générés par IA</h3>
+          <p>
+            Gemini génère des exercices uniques à chaque session, adaptés à ton
+            niveau et au sujet choisi.
+          </p>
+        </div>
+        <div class="feature-card">
+          <span class="icon">🎯</span>
+          <h3>Niveaux de difficulté</h3>
+          <p>
+            Trois niveaux disponibles : Débutant, Intermédiaire et Avancé pour
+            progresser à ton rythme.
+          </p>
+        </div>
+        <div class="feature-card">
+          <span class="icon">✔</span>
+          <h3>Correction automatique</h3>
+          <p>
+            Soumets ta réponse et reçois un verdict immédiat avec des indices
+            pour t'améliorer.
+          </p>
+        </div>
+        <div class="feature-card">
+          <span class="icon">📊</span>
+          <h3>Suivi de progression</h3>
+          <p>
+            Ton score et ton historique sont sauvegardés localement. L'IA peut
+            cibler tes points faibles.
+          </p>
+        </div>
+        <div class="feature-card">
+          <span class="icon">🚑</span>
+          <h3>Assistant pédagogique</h3>
+          <p>
+            En cas de bug ou de blocage, l'assistant t'aide à comprendre tes
+            erreurs sans donner la solution.
+          </p>
+        </div>
+        <div class="feature-card">
+          <span class="icon">🏋️</span>
+          <h3>5 thèmes couverts</h3>
+          <p>
+            Variables, If/Else, Boucles For, While et Tableaux — les
+            fondamentaux du JS en une seule appli.
+          </p>
+        </div>
+      </div>
+
+      <!-- Comment ça marche -->
+      <div class="how-section">
+        <h2>Comment ça marche ?</h2>
+        <div class="steps">
+          <div class="step">
+            <div class="step-num">1</div>
+            <p>
+              Clique sur <strong>Nouvel Exercice</strong>, choisis un
+              <strong>thème</strong> et un
+              <strong>niveau de difficulté</strong>.
+            </p>
+          </div>
+          <div class="step">
+            <div class="step-num">2</div>
+            <p>
+              Lis l'énoncé généré et complète le code dans l'<strong
+                >éditeur JavaScript</strong
+              >
+              à gauche.
+            </p>
+          </div>
+          <div class="step">
+            <div class="step-num">3</div>
+            <p>
+              Clique sur <strong>▶ Tester le code</strong> pour voir le résultat
+              s'exécuter en direct.
+            </p>
+          </div>
+          <div class="step">
+            <div class="step-num">4</div>
+            <p>
+              Clique sur <strong>✔ Soumettre ma réponse</strong> : l'IA évalue
+              ton code et te donne un retour immédiat.
+            </p>
+          </div>
+          <div class="step">
+            <div class="step-num">5</div>
+            <p>
+              Si tu es bloqué, utilise le bouton <strong>Assistant</strong> pour
+              obtenir des indices personnalisés.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- CTA -->
+      <div style="display:flex; gap:16px; align-items:center; flex-wrap:wrap; justify-content:center;">
+        <a href="./ccjs.html" class="cta-button">Lancer l'application →</a>
+        <a href="../CCPY/index.html" class="cta-button" style="background-color:#bd93f9; position:relative;">
+          <span style="position:absolute; top:-10px; right:-10px; background:#ff5555; color:#fff; font-size:0.6em; font-weight:bold; padding:2px 7px; border-radius:20px; letter-spacing:0.5px; white-space:nowrap;">✨ NOUVEAU</span>
+          🐍 Version Python
+        </a>
+      </div>
+
+      <!-- Logos -->
+      <div class="logos-row">
+        <img src="./logos/logo_um.png" alt="Logo Université de Montpellier" />
+        <img src="./logos/logo_IUT.png" alt="Logo IUT de Béziers" />
+        <img src="./logos/logo mmi.jpg" alt="Logo BUT MMI" />
+      </div>
+    </div>
+
+    <footer>
+      <p>
+        © 2025 - BUT MMI Béziers - MAURIN N.<br />
+        R1.12 Développement Web
+      </p>
+    </footer>
+  </body>
+</html>

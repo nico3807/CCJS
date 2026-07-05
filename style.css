@@ -1,0 +1,473 @@
+/* --- CONFIGURATION GÉNÉRALE --- */
+html,
+body {
+  height: 100%; /* Force la hauteur totale */
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column; /* Organisation verticale (Appli > Footer) */
+  overflow: hidden; /* Pas de scroll global sur la page */
+  background-color: #282a36; /* Thème Dracula */
+  color: #f8f8f2;
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* --- CONTENEUR PRINCIPAL (ÉDITEUR + ÉNONCÉ) --- */
+.container.top-row {
+  flex: 1; /* occupe tout l'espace disponible */
+  display: flex;
+  width: 100%;
+  gap: 10px;
+  padding: 0;
+  height: 0; /* clé pour que minmax fonctionne */
+  min-height: 0; /* empêche l'étirement */
+}
+
+/* --- ZONES (GAUCHE ET DROITE) --- */
+.code-area {
+  flex: 1;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  border: 1px solid #6272a4;
+  background-color: #44475a;
+  padding: 10px;
+  box-sizing: border-box;
+  overflow: hidden;
+  min-height: 0; /* empêche le débordement */
+}
+
+.code-area.editor {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto; /* Titre / Éditeur / Boutons */
+  overflow: hidden;
+}
+
+/* --- NOUVEAU : BARRE D'ENTÊTE (Pour la colonne de droite) --- */
+.exercises-top-bar {
+  display: flex;
+  justify-content: space-between; /* Titre à gauche, Boutons à droite */
+  align-items: center; /* Centrage vertical */
+  border-bottom: 1px solid #6272a4;
+  margin-bottom: 15px;
+  padding-bottom: 10px;
+  min-height: 50px;
+}
+
+.exercises-top-bar h3 {
+  margin: 0; /* Enlève les marges pour bien aligner */
+  border: none;
+}
+
+.header-buttons {
+  display: flex;
+  gap: 10px; /* Espace entre les boutons */
+  align-items: center;
+}
+
+/* --- ÉDITEUR CODEMIRROR --- */
+.CodeMirror {
+  height: 100% !important; /* Remplit sa case à 100% */
+  overflow-y: auto; /* Scroll si code trop long */
+  scrollbar-gutter: stable; /* Évite le décalage quand la barre apparaît */
+  border: 1px solid #6272a4;
+  font-size: 16px;
+  border-radius: 4px;
+}
+
+/* Zone Énoncé */
+.code-area.statement {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr); /* Titre / Contenu */
+  overflow: hidden;
+  font-size: 1.1em;
+}
+
+/* --- CONTENEUR ÉNONCÉ --- */
+
+#exerciseContainer {
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+  padding-right: 5px;
+  min-height: 0; /* empêche l'étirement */
+}
+/* --- BOUTONS --- */
+/* Zone boutons colonne gauche */
+.buttons-row {
+  margin-top: 10px;
+  display: flex;
+  gap: 10px;
+  /* 🛡️ SÉCURITÉ : Interdit au navigateur d'écraser cette zone */
+  flex-shrink: 0;
+  min-height: 50px; /* On réserve une taille minimum pour les boutons */
+}
+
+/* Style commun des boutons */
+button {
+  cursor: pointer;
+  border: none;
+  border-radius: 4px;
+  font-weight: bold;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+}
+
+button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 8px rgba(0, 0, 0, 0.3);
+}
+
+/* 1. Bouton "Tester le code" (Vert) */
+#runButton {
+  background-color: #50fa7b;
+  color: #282a36;
+  font-size: 1.2em;
+  padding: 12px 24px;
+  flex: 1;
+}
+
+/* Bouton "Soumettre ma réponse" (Orange) */
+#submitButton {
+  background-color: #ffb86c;
+  color: #282a36;
+  font-size: 1.2em;
+  padding: 12px 24px;
+  flex: 1;
+}
+
+#submitButton:hover {
+  background-color: #ff9500;
+}
+
+#submitButton:disabled {
+  background-color: #44475a;
+  color: #6272a4;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+#runButton:hover {
+  background-color: #049328;
+}
+
+/* 2. Bouton "Nouvel Exercice" (Bleu) */
+#newExerciseButton {
+  background-color: #4d61d5;
+  color: #f8f8f2;
+  font-size: 1.1em; /* ⭐ Police augmentée */
+  padding: 10px 20px; /* ⭐ Bouton plus gros */
+}
+
+#newExerciseButton:hover {
+  background-color: #3020c4;
+}
+
+/* 3. Bouton "Assistant" et "Fermer" (Mauve) */
+
+#closeModalButton,
+#closeExecutionButton,
+#closeTopicButton {
+  background-color: #bd93f9;
+  color: #282a36;
+  padding: 5px 15px; /* Taille standard */
+}
+#assistantButton {
+  background-color: #bd93f9; /* On garde la couleur mauve */
+  color: #282a36;
+
+  /* 👇 ICI : On copie les dimensions de "Nouvel Exercice" */
+  font-size: 1.1em;
+  padding: 10px 20px;
+}
+#assistantButton:hover,
+#closeModalButton:hover,
+#closeExecutionButton:hover,
+#closeTopicButton:hover {
+  background-color: #ff79c6;
+}
+
+#assistantButton img {
+  display: block; /* Enlève l'espace parasite sous l'image */
+}
+
+/* --- MODALES (POP-UP) --- */
+.modal {
+  display: none;
+  position: fixed;
+  z-index: 1000;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.7); /* Fond noir foncé */
+  backdrop-filter: blur(2px); /* Petit effet de flou derrière */
+}
+
+.modal-content {
+  background-color: #282a36;
+  color: #f8f8f2;
+  /* Positionnement et Taille */
+  margin: 5% auto; /* 5% du haut */
+  width: 80%;
+  max-width: 900px;
+  height: 80%; /* Hauteur fixe relative à l'écran */
+  border: 2px solid #bd93f9;
+  border-radius: 8px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden; /* Empêche le contenu de déborder */
+}
+
+.modal-content h3 {
+  margin-top: 0;
+  color: #bd93f9;
+  border-bottom: 1px solid #44475a;
+  padding-bottom: 15px;
+}
+
+#assistantContent {
+  flex: 1; /* Prend tout l'espace central */
+  overflow-y: auto; /* Scroll uniquement ici */
+  padding: 10px;
+  font-size: 1.1em;
+  line-height: 1.5;
+}
+
+.modal-footer {
+  margin-top: 0;
+  padding: 15px;
+  background-color: #282a36;
+  border-top: 1px solid #44475a;
+  flex-shrink: 0; /* Ne s'écrase jamais */
+  text-align: right;
+}
+
+/* --- STYLES MARKDOWN (ÉNONCÉ & ASSISTANT) --- */
+.markdown-content,
+#assistantContent {
+  color: #f8f8f2;
+}
+
+.markdown-content h4 {
+  color: #ff79c6;
+  font-size: 1.1em;
+  margin-top: 15px;
+}
+
+.markdown-content strong {
+  color: #50fa7b;
+}
+
+.markdown-content ul {
+  padding-left: 20px;
+}
+
+.markdown-content pre {
+  background: #21222c;
+  padding: 10px;
+  border-radius: 4px;
+  overflow-x: auto;
+}
+
+/* --- SCORE DISPLAY --- */
+.score-display {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background-color: #44475a;
+  border: 1px solid #6272a4;
+  border-radius: 20px;
+  padding: 4px 12px;
+  font-size: 0.9em;
+  font-weight: bold;
+}
+
+.score-correct {
+  color: #50fa7b;
+}
+.score-sep {
+  color: #6272a4;
+}
+.score-total {
+  color: #f8f8f2;
+}
+.score-pct {
+  color: #bd93f9;
+  font-size: 0.85em;
+  margin-left: 2px;
+}
+
+/* --- POINTS FAIBLES --- */
+.weak-points-section {
+  padding: 0 20px 10px;
+}
+
+.weak-points-divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 5px 0 15px;
+  color: #6272a4;
+  font-size: 0.85em;
+}
+
+.weak-points-divider::before,
+.weak-points-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background-color: #44475a;
+}
+
+.weak-points-btn {
+  background-color: #282a36 !important;
+  border: 2px dashed #ffb86c !important;
+  color: #ffb86c !important;
+}
+
+.weak-points-btn:hover:not(:disabled) {
+  background-color: rgba(255, 184, 108, 0.1) !important;
+  border-style: solid !important;
+}
+
+.weak-points-btn:disabled {
+  border-color: #44475a !important;
+  color: #6272a4 !important;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+/* --- VERDICTS DE VALIDATION --- */
+.verdict {
+  font-size: 1.4em;
+  font-weight: bold;
+  text-align: center;
+  padding: 15px;
+  border-radius: 6px;
+  margin-bottom: 15px;
+}
+
+.verdict-correct {
+  background-color: rgba(80, 250, 123, 0.15);
+  border: 2px solid #50fa7b;
+  color: #50fa7b;
+}
+
+.verdict-incorrect {
+  background-color: rgba(255, 85, 85, 0.15);
+  border: 2px solid #ff5555;
+  color: #ff5555;
+}
+
+/* --- FOOTER (PIED DE PAGE) --- */
+
+footer p {
+  margin: 0;
+  text-align: center;
+  line-height: 1.4;
+}
+footer {
+  flex-shrink: 0;
+  font-size: 0.8em;
+  color: #dedede;
+  background-color: #282a36;
+  border-top: 1px solid #bd93f9;
+  padding: 5px;
+  text-align: center;
+}
+/* --- Sélecteur de difficulté --- */
+.difficulty-selector {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 15px 20px 5px;
+}
+
+.difficulty-label {
+  color: #f8f8f2;
+  font-weight: bold;
+  margin-right: 4px;
+}
+
+.difficulty-btn {
+  background-color: #44475a;
+  color: #f8f8f2;
+  padding: 6px 14px;
+  font-size: 0.9em;
+  border: 2px solid transparent;
+  border-radius: 20px;
+}
+
+.difficulty-btn:hover {
+  transform: translateY(-1px);
+}
+
+.difficulty-btn.active[data-level="débutant"] {
+  background-color: rgba(80, 250, 123, 0.15);
+  border-color: #50fa7b;
+  color: #50fa7b;
+}
+
+.difficulty-btn.active[data-level="intermédiaire"] {
+  background-color: rgba(241, 250, 140, 0.15);
+  border-color: #f1fa8c;
+  color: #f1fa8c;
+}
+
+.difficulty-btn.active[data-level="avancé"] {
+  background-color: rgba(255, 85, 85, 0.15);
+  border-color: #ff5555;
+  color: #ff5555;
+}
+
+/* --- Badges de difficulté dans l'énoncé --- */
+.difficulty-badge {
+  display: inline-block;
+  font-size: 0.85em;
+  font-weight: bold;
+  padding: 3px 10px;
+  border-radius: 12px;
+  margin-bottom: 12px;
+}
+
+.badge-debutant {
+  background-color: rgba(80, 250, 123, 0.15);
+  border: 1px solid #50fa7b;
+  color: #50fa7b;
+}
+
+.badge-intermediaire {
+  background-color: rgba(241, 250, 140, 0.15);
+  border: 1px solid #f1fa8c;
+  color: #f1fa8c;
+}
+
+.badge-avance {
+  background-color: rgba(255, 85, 85, 0.15);
+  border: 1px solid #ff5555;
+  color: #ff5555;
+}
+
+/* --- NOUVEAU : Styles pour la modale de choix --- */
+.topic-buttons-container {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  padding: 20px;
+}
+
+.topic-btn {
+  background-color: #6272a4; /* Couleur Dracula intermédiaire */
+  color: white;
+  padding: 15px;
+  font-size: 1.1em;
+  border: 1px solid #bd93f9;
+}
+
+.topic-btn:hover {
+  background-color: #bd93f9;
+  color: #282a36;
+}
