@@ -9,8 +9,8 @@ const codeMirrorInstance = CodeMirror.fromTextArea(editorElement, {
 });
 //
 
-// URL du Cloudflare Worker (voir cloudflare-worker/) — à remplacer après déploiement
-const API_URL = "https://ccjs-proxy.VOTRE-SOUS-DOMAINE.workers.dev";
+// URL du Cloudflare Worker (voir cloudflare-worker/)
+const API_URL = "https://round-lake-72da.nicolas-maurin1.workers.dev/";
 
 const exerciseContainer = document.getElementById("exerciseContainer");
 
