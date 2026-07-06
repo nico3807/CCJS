@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Code Coach PHP</title>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.1/codemirror.min.css"
+    />
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <header>
+      <div class="header-inner">
+        <span class="site-title">Code Coach PHP</span>
+        <a href="./index.html" class="header-back">← Accueil</a>
+      </div>
+    </header>
+
+    <!-- LIGNE 1 : ÉDITEUR (50%) | ÉNONCÉ (50%) -->
+
+    <div class="container top-row">
+      <!-- Zone Éditeur -->
+      <div class="code-area editor">
+        <h3>Éditeur de code PHP :</h3>
+        <textarea id="editor"><?php
+// Ajoutez votre code PHP ici</textarea>
+        <div class="console-panel">
+          <div class="console-bar">
+            <span class="console-title">Console</span>
+            <div class="console-actions">
+              <button id="clearConsoleButton" title="Effacer la console">🗑 Effacer</button>
+            </div>
+          </div>
+          <iframe id="outputFrame" title="Résultat de l'exécution"></iframe>
+        </div>
+        <div class="buttons-row">
+          <button id="runButton" title="Ctrl + Entrée">▶ Tester le code <kbd>Ctrl+↵</kbd></button>
+          <button id="submitButton" disabled>✔ Soumettre ma réponse</button>
+        </div>
+      </div>
+
+      <!-- Zone Énoncé -->
+      <div class="code-area statement">
+        <div class="exercises-top-bar">
+          <h3>Énoncé de l'exercice :</h3>
+          <div id="scoreDisplay" class="score-display" style="display:none"></div>
+          <div class="header-buttons">
+            <button id="newExerciseButton">Nouvel Exercice</button>
+            <button id="assistantButton">Assistant</button>
+            <button id="historyButton" title="Revoir mes anciens exercices">📜</button>
+          </div>
+        </div>
+        <div id="exerciseContainer">
+          Cliquez sur "<strong>Nouvel Exercice</strong>" pour commencer.
+        </div>
+      </div>
+    </div>
+
+    <!-- Modale Assistant (indices progressifs) -->
+    <div id="assistantModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="assistantModalTitle">
+      <div class="modal-content">
+        <h3 id="assistantModalTitle">Assistant Pédagogique 🎓</h3>
+        <div id="hintLevels" class="hint-levels">
+          <button class="hint-btn" data-level="1">💡 Indice léger</button>
+          <button class="hint-btn" data-level="2">🔍 Indice ciblé</button>
+          <button class="hint-btn" data-level="3">🛟 Aide forte</button>
+        </div>
+        <div id="assistantContent">
+          <!-- La réponse de Claude s'affichera ici -->
+          <p>
+            Je suis là pour t'aider. Choisis un niveau d'aide ci-dessus :
+            commence par l'indice léger, et monte d'un cran si tu restes bloqué.
+          </p>
+        </div>
+        <div class="modal-footer">
+          <button id="closeModalButton">Fermer</button>
+        </div>
+      </div>
+    </div>
+    <div id="topicModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="topicModalTitle">
+      <div class="modal-content" style="max-width: 500px; text-align: center">
+        <h3 id="topicModalTitle">Choisis ton défi ⚔️</h3>
+        <div class="difficulty-selector">
+          <span class="difficulty-label">Niveau :</span>
+          <button class="difficulty-btn active" data-level="débutant">🟢 Débutant</button>
+          <button class="difficulty-btn" data-level="intermédiaire">🟡 Intermédiaire</button>
+          <button class="difficulty-btn" data-level="avancé">🔴 Avancé</button>
+        </div>
+        <div class="topic-buttons-container">
+          <button onclick="loadPromptAndRun('php_classes.txt')" class="topic-btn" data-topic="php_classes.txt">
+            <span class="topic-label">Classes & objets</span>
+            <span class="topic-progress"></span>
+          </button>
+          <button onclick="loadPromptAndRun('php_constructeur.txt')" class="topic-btn" data-topic="php_constructeur.txt">
+            <span class="topic-label">Constructeur & $this</span>
+            <span class="topic-progress"></span>
+          </button>
+          <button onclick="loadPromptAndRun('php_encapsulation.txt')" class="topic-btn" data-topic="php_encapsulation.txt">
+            <span class="topic-label">Encapsulation (private, getters)</span>
+            <span class="topic-progress"></span>
+          </button>
+          <button onclick="loadPromptAndRun('php_heritage.txt')" class="topic-btn" data-topic="php_heritage.txt">
+            <span class="topic-label">Héritage (extends)</span>
+            <span class="topic-progress"></span>
+          </button>
+          <button onclick="loadPromptAndRun('php_interfaces.txt')" class="topic-btn" data-topic="php_interfaces.txt">
+            <span class="topic-label">Abstraites & interfaces</span>
+            <span class="topic-progress"></span>
+          </button>
+        </div>
+        <div class="weak-points-section">
+          <div class="weak-points-divider"><span>ou</span></div>
+          <button id="weakPointsButton" class="topic-btn weak-points-btn" disabled>
+            🎯 Cibler mes points faibles
+          </button>
+        </div>
+        <div class="modal-footer">
+          <button id="closeTopicButton">Annuler</button>
+        </div>
+      </div>
+    </div>
+    <!-- Modale Historique des exercices -->
+    <div id="historyModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="historyModalTitle">
+      <div class="modal-content" style="max-width: 640px">
+        <h3 id="historyModalTitle">Mes derniers exercices 📜</h3>
+        <div id="historyList">
+          <!-- Rempli par script.js -->
+        </div>
+        <div class="modal-footer">
+          <button id="closeHistoryButton">Fermer</button>
+        </div>
+      </div>
+    </div>
+    <footer>
+      <p>
+        © 2025 - BUT MMI Béziers - MAURIN N.<br />
+        R1.12 Développement Web
+      </p>
+    </footer>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.1/codemirror.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.1/mode/javascript/javascript.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.1/mode/xml/xml.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.1/mode/css/css.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.1/mode/htmlmixed/htmlmixed.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.1/mode/clike/clike.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.1/mode/php/php.min.js"></script>
+
+    <script>
+      // Configuration du module PHP (lue par script.js)
+      window.APP_CONFIG = {
+        lang: "php",
+        langLabel: "PHP orienté objet",
+        storagePrefix: "ccphp_",
+        editorMode: "php",
+        noOutputMsg:
+          "✓ Code exécuté sans erreur (aucune sortie — utilise echo pour afficher un résultat).",
+      };
+    </script>
+    <script type="module">
+      // Moteur PHP dans le navigateur (php-wasm / WebAssembly)
+      import { PhpWeb } from "https://cdn.jsdelivr.net/npm/php-wasm/PhpWeb.mjs";
+
+      let php;
+      let outBuf = [];
+      let errBuf = [];
+
+      function push(buf, detail) {
+        (Array.isArray(detail) ? detail : [detail]).forEach((x) =>
+          buf.push(String(x)),
+        );
+      }
+
+      function createPhp() {
+        php = new PhpWeb();
+        php.addEventListener("output", (e) => push(outBuf, e.detail));
+        php.addEventListener("error", (e) => push(errBuf, e.detail));
+      }
+
+      createPhp();
+
+      window.PHP_RUNNER = {
+        async run(code) {
+          outBuf = [];
+          errBuf = [];
+          try {
+            await php.binary;
+            await php.run(code);
+          } catch (e) {
+            errBuf.push(String((e && e.message) || e));
+          }
+          // Réinitialise l'état PHP entre deux exécutions (sinon les classes
+          // déjà déclarées provoqueraient un "Cannot redeclare class")
+          try {
+            if (typeof php.refresh === "function") await php.refresh();
+            else createPhp();
+          } catch {
+            createPhp();
+          }
+          return { output: outBuf.join(""), error: errBuf.join("") };
+        },
+      };
+    </script>
+    <script src="./script.js"></script>
+  </body>
+</html>

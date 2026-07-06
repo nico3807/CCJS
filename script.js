@@ -1,9 +1,23 @@
 // --- 1. INITIALISATION ----
 
+// Configuration du langage : ccjs.html utilise les valeurs par défaut (JS),
+// ccphp.html définit window.APP_CONFIG avant de charger ce script.
+const CONFIG = Object.assign(
+  {
+    lang: "js",
+    langLabel: "JavaScript",
+    storagePrefix: "ccjs_",
+    editorMode: "javascript",
+    noOutputMsg:
+      "✓ Code exécuté sans erreur (aucune sortie console — utilise console.log() pour afficher un résultat).",
+  },
+  window.APP_CONFIG || {},
+);
+
 const editorElement = document.getElementById("editor");
 const codeMirrorInstance = CodeMirror.fromTextArea(editorElement, {
   lineNumbers: true,
-  mode: "javascript",
+  mode: CONFIG.editorMode,
   theme: "gestion",
   lineWrapping: true,
 });
@@ -39,7 +53,7 @@ const submitButton = document.getElementById("submitButton");
 
 // --- HISTORIQUE & SCORE ---
 
-const HISTORY_KEY = "ccjs_history";
+const HISTORY_KEY = CONFIG.storagePrefix + "history";
 const MAX_HISTORY = 50;
 
 const topicLabels = {
@@ -52,6 +66,11 @@ const topicLabels = {
   "objets.txt": "Objets",
   "dom.txt": "DOM",
   "evenements.txt": "Événements",
+  "php_classes.txt": "Classes & objets",
+  "php_constructeur.txt": "Constructeur",
+  "php_encapsulation.txt": "Encapsulation",
+  "php_heritage.txt": "Héritage",
+  "php_interfaces.txt": "Abstraites & interfaces",
 };
 
 function getHistory() {
@@ -143,8 +162,8 @@ function updateTopicProgress() {
 
 // --- SAUVEGARDE AUTOMATIQUE (code + exercice en cours) ---
 
-const DRAFT_CODE_KEY = "ccjs_draft_code";
-const CURRENT_EX_KEY = "ccjs_current_exercise";
+const DRAFT_CODE_KEY = CONFIG.storagePrefix + "draft_code";
+const CURRENT_EX_KEY = CONFIG.storagePrefix + "current_exercise";
 
 let draftSaveTimer;
 codeMirrorInstance.on("change", () => {
@@ -187,7 +206,7 @@ function restoreSession() {
 
 // --- HISTORIQUE DES EXERCICES (revoir / refaire) ---
 
-const EXERCISES_KEY = "ccjs_exercises";
+const EXERCISES_KEY = CONFIG.storagePrefix + "exercises";
 const MAX_EXERCISES = 20;
 let currentExerciseId = null;
 
@@ -356,6 +375,11 @@ function runCode() {
   const existingErrorBtn = document.getElementById("errorExplainBtn");
   if (existingErrorBtn) existingErrorBtn.remove();
 
+  if (CONFIG.lang === "php") {
+    runPhpCode();
+    return;
+  }
+
   const rawCode = codeMirrorInstance.getValue();
 
   // 🛡️ SÉCURITÉ : Échappement des caractères spéciaux
@@ -402,7 +426,7 @@ function runCode() {
             if (!document.querySelector('pre')) {
                 const p = document.createElement('div');
                 p.className = 'placeholder';
-                p.textContent = '✓ Code exécuté sans erreur (aucune sortie console — utilise console.log() pour afficher un résultat).';
+                p.textContent = ${JSON.stringify(CONFIG.noOutputMsg)};
                 document.body.appendChild(p);
             }
         } catch (e) {
@@ -417,6 +441,91 @@ function runCode() {
     const target = iframeDoc.getElementById("script-target");
     if (target) target.appendChild(scriptElement);
   }, 50);
+}
+
+// --- 2b. EXÉCUTION PHP (via php-wasm, chargé par ccphp.html) ---
+
+const PHP_ERROR_REGEX =
+  /^(PHP\s+)?(Parse error|Fatal error|Uncaught|Warning|Notice|Deprecated)/i;
+
+async function runPhpCode() {
+  const outputFrame = document.getElementById("outputFrame");
+  const iframeDoc =
+    outputFrame.contentDocument || outputFrame.contentWindow.document;
+
+  iframeDoc.open();
+  iframeDoc.write(`
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <style>
+            ${CONSOLE_STYLE}
+            pre.error { color: #dc2626; }
+        </style>
+    </head>
+    <body></body>
+    </html>
+  `);
+  iframeDoc.close();
+
+  const writeLine = (text, cls) => {
+    const p = iframeDoc.createElement("pre");
+    if (cls) p.className = cls;
+    p.textContent = text;
+    iframeDoc.body.appendChild(p);
+  };
+
+  if (!window.PHP_RUNNER) {
+    writeLine(
+      "⏳ Le moteur PHP est encore en cours de chargement... réessaie dans quelques secondes.",
+    );
+    return;
+  }
+
+  let code = codeMirrorInstance.getValue();
+  // On tolère l'oubli de la balise d'ouverture
+  if (!/^\s*<\?php/.test(code)) code = "<?php\n" + code;
+
+  let result;
+  try {
+    result = await window.PHP_RUNNER.run(code);
+  } catch (e) {
+    result = { output: "", error: String((e && e.message) || e) };
+  }
+
+  const output = (result.output || "").replace(/\r\n/g, "\n");
+  const errOut = (result.error || "").replace(/\r\n/g, "\n").trim();
+  let firstError = null;
+
+  if (output.trim()) {
+    output
+      .replace(/\n+$/, "")
+      .split("\n")
+      .forEach((line) => {
+        const isErr = PHP_ERROR_REGEX.test(line.trim());
+        if (isErr && !firstError) firstError = line.trim();
+        writeLine(line, isErr ? "error" : "");
+      });
+  }
+
+  if (errOut) {
+    errOut.split("\n").forEach((line) => writeLine(line, "error"));
+    if (!firstError) firstError = errOut.split("\n")[0];
+  }
+
+  if (!output.trim() && !errOut) {
+    const p = iframeDoc.createElement("div");
+    p.className = "placeholder";
+    p.textContent = CONFIG.noOutputMsg;
+    iframeDoc.body.appendChild(p);
+  }
+
+  // Erreur PHP détectée : même mécanique que le JS (bouton "Expliquer l'erreur")
+  if (firstError && /Parse error|Fatal error|Uncaught/i.test(firstError)) {
+    lastError = firstError;
+    sessionErrors.push(firstError);
+    addErrorButton();
+  }
 }
 
 // --- 3. GÉNÉRATION D'EXERCICE ---
@@ -456,7 +565,7 @@ async function generateExercise(specificInstructions = "") {
   // J'ai retiré la partie "Contexte" pour la laisser au fichier texte spécifique
   const baseSystemPrompt = `
     Tu es un professeur expert en pédagogie pour le BUT MMI. 
-    Tu dois créer un exercice court de JavaScript.
+    Tu dois créer un exercice court de ${CONFIG.langLabel}.
     
     Contraintes de rédaction :
     - Adresse-toi directement à l'étudiant (tu).
@@ -481,7 +590,7 @@ async function generateExercise(specificInstructions = "") {
   };
 
   // On combine la demande utilisateur avec le contenu du fichier texte
-  const userQuery = `Génère un exercice JavaScript de niveau ${currentDifficulty}.
+  const userQuery = `Génère un exercice ${CONFIG.langLabel} de niveau ${currentDifficulty}.
   Contrainte de difficulté : ${difficultyInstructions[currentDifficulty]}
   Voici les consignes pédagogiques spécifiques à respecter pour cet exercice :
   ${specificInstructions}`;
@@ -517,7 +626,7 @@ async function generateExercise(specificInstructions = "") {
         .substring(splitIndex + splitMatch[0].length)
         .trim();
       codePart = rawCodePart
-        .replace(/^```(javascript|js)?/i, "")
+        .replace(/^```(javascript|js|php)?/i, "")
         .replace(/```$/, "")
         .trim();
     }
@@ -549,7 +658,7 @@ async function validateCode() {
   const studentCode = codeMirrorInstance.getValue();
 
   const systemPrompt = `
-Tu es un correcteur automatique d'exercices JavaScript pour étudiants BUT MMI.
+Tu es un correcteur automatique d'exercices ${CONFIG.langLabel} pour étudiants BUT MMI.
 Tu dois évaluer si le code de l'étudiant répond correctement à l'exercice demandé.
 Réponds TOUJOURS en commençant par une ligne de verdict avec exactement ce format :
 VERDICT: CORRECT ou VERDICT: INCORRECT
@@ -652,7 +761,7 @@ async function askAssistant(level = 1) {
       : exerciseContainer.innerText;
 
   const systemPrompt = `
-Tu es un expert en développement javascript.
+Tu es un expert en développement ${CONFIG.langLabel}.
 Tu dois aider un étudiant de première année en BUT MMI.
 Tu ne dois jamais donner la correction complète de l'exercice.
 Tu dois t'exprimer en français, avec un ton encourageant.
@@ -713,7 +822,7 @@ async function explainError() {
 
   const studentCode = codeMirrorInstance.getValue();
   const systemPrompt =
-    "Tu es un expert en pédagogie JavaScript. Explique l'erreur rencontrée par l'étudiant simplement et donne une piste de correction sans donner la solution complète.";
+    `Tu es un expert en pédagogie ${CONFIG.langLabel}. Explique l'erreur rencontrée par l'étudiant simplement et donne une piste de correction sans donner la solution complète.`;
   const userPrompt = `Code de l'étudiant :\n${studentCode}\n\nErreur rencontrée :\n${lastError}`;
 
   try {
