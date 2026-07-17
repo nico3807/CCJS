@@ -14,7 +14,18 @@
     <header>
       <div class="header-inner">
         <span class="site-title">Code Coach JS</span>
-        <a href="./index.html" class="header-back">← Accueil</a>
+        <span id="student-label" title="Étudiant de la session en cours"></span>
+        <div class="header-actions">
+          <button id="certButton" class="header-btn"
+                  title="Télécharger le certificat PDF — avant la fin du parcours, il portera la mention « Non terminé »">
+            📜 Certificat
+          </button>
+          <button id="logoutButton" class="header-btn"
+                  title="Enregistre ta session et affiche l'écran d'identification pour l'étudiant suivant">
+            👤 Changer d'étudiant
+          </button>
+          <a href="./index.html" class="header-back">← Accueil</a>
+        </div>
       </div>
     </header>
 
@@ -148,6 +159,42 @@
         </div>
       </div>
     </div>
+    <!-- Écran d'identification (début de session) -->
+    <div id="loginmodal" role="dialog" aria-modal="true" aria-labelledby="loginmodal-title">
+      <div id="loginmodal-window">
+        <h2 id="loginmodal-title">👋 Code Coach JS</h2>
+        <p>Identifie-toi pour démarrer <b>ta</b> session sur ce poste.<br>
+           Ta progression sera enregistrée à ton nom : plusieurs étudiants
+           peuvent s'entraîner sur le même ordinateur.</p>
+        <label for="login-prenom">Prénom</label>
+        <input id="login-prenom" type="text" autocomplete="off" maxlength="40">
+        <label for="login-nom">Nom</label>
+        <input id="login-nom" type="text" autocomplete="off" maxlength="40">
+        <p id="login-error" role="alert"></p>
+        <div id="loginmodal-buttons">
+          <button id="login-start">▶ Démarrer la session</button>
+        </div>
+        <div id="login-sessions" hidden>
+          <p id="login-sessions-title">Sessions déjà enregistrées sur ce poste — clique pour reprendre :</p>
+          <div id="login-list"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Pop-up du certificat (état d'avancement) -->
+    <div id="certmodal" role="dialog" aria-modal="true" aria-labelledby="certmodal-title">
+      <div id="certmodal-window">
+        <h2 id="certmodal-title">🏆 Certificat de réussite</h2>
+        <p id="certmodal-desc"></p>
+        <p id="cert-identity"></p>
+        <p id="cert-error" role="alert"></p>
+        <div id="certmodal-buttons">
+          <button id="cert-generate">📜 Télécharger le certificat PDF</button>
+          <button id="cert-cancel">Plus tard</button>
+        </div>
+      </div>
+    </div>
+
     <footer>
       <p>
         © 2025 - BUT MMI Béziers - MAURIN N.<br />
@@ -158,6 +205,8 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.1/codemirror.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.1/mode/javascript/javascript.min.js"></script>
 
+    <script src="./vendor/jspdf.umd.min.js"></script>
+    <script src="./certificate.js"></script>
     <script src="./script.js"></script>
   </body>
 </html>
