@@ -664,7 +664,10 @@ Réponds TOUJOURS en commençant par une ligne de verdict avec exactement ce for
 VERDICT: CORRECT ou VERDICT: INCORRECT
 
 Puis explique en 2-4 phrases pourquoi, sans donner la correction complète si c'est incorrect.
-Tu dois t'exprimer en français.
+Tu dois t'exprimer en français. 
+- Adresse-toi directement à l'étudiant (tu)
+- Ne pas employer "l'étudiant"
+- Ton encourageant mais technique
 `;
 
   const userPrompt = `
