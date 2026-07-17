@@ -8,6 +8,8 @@ const CONFIG = Object.assign(
     langLabel: "JavaScript",
     storagePrefix: "ccjs_",
     editorMode: "javascript",
+    appTitle: "Code Coach JS",
+    appSlug: "code_coach_js",
     noOutputMsg:
       "✓ Code exécuté sans erreur (aucune sortie console — utilise console.log() pour afficher un résultat).",
   },
@@ -51,10 +53,85 @@ let currentTopic = null;
 let sessionErrors = [];
 const submitButton = document.getElementById("submitButton");
 
+// Contenu par défaut de l'éditeur (restauré au changement d'étudiant)
+const DEFAULT_EDITOR_CODE = codeMirrorInstance.getValue();
+const DEFAULT_EXERCISE_HTML = exerciseContainer.innerHTML;
+
+// --- SESSION ÉTUDIANT (identification en début de session) ---
+// Comme dans MMI Linux Quest : une sauvegarde par étudiant sur le poste,
+// demandée via prénom + nom au chargement de la page.
+
+const REGISTRY_KEY = CONFIG.storagePrefix + "etudiants";
+let player = null; // { prenom, nom } — demandé en début de session
+let sessionStart = Date.now();
+
+/** Identifiant technique à partir d'un nom (accents/espaces retirés). */
+function slug(s) {
+  return String(s).toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "")
+    .replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "") || "x";
+}
+
+function playerId() {
+  return `${slug(player.nom)}_${slug(player.prenom)}`;
+}
+
+/** Clé de stockage propre à l'étudiant identifié (null si personne). */
+function pKey(name) {
+  if (!player) return null;
+  return `${CONFIG.storagePrefix}${playerId()}:${name}`;
+}
+
+/** Liste des étudiants ayant une session enregistrée sur ce poste. */
+function listPlayers() {
+  try {
+    const arr = JSON.parse(localStorage.getItem(REGISTRY_KEY) || "[]");
+    return Array.isArray(arr) ? arr : [];
+  } catch {
+    return [];
+  }
+}
+
+/** Met à jour l'annuaire des sessions du poste (pour l'écran d'accueil). */
+function updateRegistry() {
+  if (!player) return;
+  try {
+    const s = getCertStats();
+    const players = listPlayers().filter((p) => p.id !== playerId());
+    players.unshift({
+      id: playerId(),
+      prenom: player.prenom,
+      nom: player.nom,
+      topicsDone: s.topicsDone,
+      topicsTotal: s.topicsTotal,
+      finished: s.finished,
+      lastPlayed: Date.now(),
+    });
+    localStorage.setItem(REGISTRY_KEY, JSON.stringify(players));
+  } catch {
+    /* stockage indisponible */
+  }
+}
+
+/** Cumule le temps passé sur le parcours par l'étudiant identifié. */
+function flushPlayTime() {
+  if (!player) return;
+  try {
+    const key = pKey("playtime");
+    const total = parseInt(localStorage.getItem(key) || "0", 10) || 0;
+    localStorage.setItem(key, String(total + (Date.now() - sessionStart)));
+  } catch {
+    /* stockage indisponible */
+  }
+  sessionStart = Date.now();
+}
+
+window.addEventListener("beforeunload", flushPlayTime);
+
 // --- HISTORIQUE & SCORE ---
 
-const HISTORY_KEY = CONFIG.storagePrefix + "history";
-const MAX_HISTORY = 50;
+// Assez grand pour couvrir tout le parcours (9 thèmes × 5 réussites + échecs) :
+// en dessous, la progression par thème « reculerait » une fois la limite atteinte.
+const MAX_HISTORY = 400;
 
 const topicLabels = {
   "variables.txt": "Variables",
@@ -74,11 +151,17 @@ const topicLabels = {
 };
 
 function getHistory() {
-  return JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]");
+  if (!player) return [];
+  try {
+    return JSON.parse(localStorage.getItem(pKey("history")) || "[]");
+  } catch {
+    return [];
+  }
 }
 
 function saveAttempt(isCorrect) {
-  if (!currentTopic) return;
+  if (!currentTopic || !player) return;
+  const wasFinished = getCertStats().finished;
   const history = getHistory();
   history.push({
     topic: currentTopic,
@@ -90,10 +173,16 @@ function saveAttempt(isCorrect) {
   });
   if (history.length > MAX_HISTORY)
     history.splice(0, history.length - MAX_HISTORY);
-  localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+  localStorage.setItem(pKey("history"), JSON.stringify(history));
+  flushPlayTime();
   updateScoreDisplay();
   updateWeakPointsButton();
   updateTopicProgress();
+  updateRegistry();
+  // Parcours tout juste terminé : on propose le certificat de réussite
+  if (!wasFinished && getCertStats().finished) {
+    setTimeout(openCertModal, 1600);
+  }
 }
 
 function getTopicStats() {
@@ -160,22 +249,250 @@ function updateTopicProgress() {
   });
 }
 
-// --- SAUVEGARDE AUTOMATIQUE (code + exercice en cours) ---
+// --- CERTIFICAT PDF (état d'avancement du parcours) ---
+// Même principe que dans MMI Linux Quest : disponible à tout moment ;
+// tant que tous les thèmes ne sont pas validés, le document porte la
+// mention « NON TERMINÉ ».
 
-const DRAFT_CODE_KEY = CONFIG.storagePrefix + "draft_code";
-const CURRENT_EX_KEY = CONFIG.storagePrefix + "current_exercise";
+// Thèmes du parcours courant (JS ou PHP), lus depuis la modale de sujets
+const APP_TOPICS = [...document.querySelectorAll(".topic-btn[data-topic]")].map(
+  (btn) => btn.dataset.topic,
+);
+
+/** Statistiques du parcours pour le certificat PDF. */
+function getCertStats() {
+  const history = getHistory();
+  const stats = getTopicStats();
+  const correct = history.filter((a) => a.result === "correct").length;
+  const total = history.length;
+  const topicsDone = APP_TOPICS.filter(
+    (t) => (stats[t]?.correct || 0) >= TOPIC_GOAL,
+  ).length;
+  let ms = Date.now() - sessionStart;
+  try {
+    ms += parseInt(localStorage.getItem(pKey("playtime")) || "0", 10) || 0;
+  } catch {
+    /* stockage indisponible */
+  }
+  const mins = Math.round(ms / 60000);
+  const h = Math.floor(mins / 60),
+    mn = mins % 60;
+  return {
+    duree: h > 0 ? `${h} h ${String(mn).padStart(2, "0")} min` : `${mn} min`,
+    topicsDone,
+    topicsTotal: APP_TOPICS.length,
+    goal: TOPIC_GOAL,
+    correct,
+    total,
+    pct: total > 0 ? Math.round((correct / total) * 100) : 0,
+    finished: topicsDone === APP_TOPICS.length,
+    date: new Date().toLocaleDateString("fr-FR", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    }),
+  };
+}
+
+/** Détail de l'avancement par thème (pour le PDF). */
+function getTopicsForCertificate() {
+  const stats = getTopicStats();
+  return APP_TOPICS.map((t) => ({
+    label: topicLabels[t] || t,
+    correct: Math.min(TOPIC_GOAL, stats[t]?.correct || 0),
+    goal: TOPIC_GOAL,
+  }));
+}
+
+/** Historique des tentatives (pour le PDF). */
+function getHistoryForCertificate() {
+  return getHistory().map((a) => {
+    const d = new Date(a.timestamp);
+    return {
+      date:
+        d.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" }) +
+        " " +
+        d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }),
+      topicLabel: a.topicLabel,
+      difficulty: a.difficulty,
+      result: a.result,
+    };
+  });
+}
+
+const certModal = document.getElementById("certmodal");
+const certTitle = document.getElementById("certmodal-title");
+const certDesc = document.getElementById("certmodal-desc");
+const certIdentity = document.getElementById("cert-identity");
+const certError = document.getElementById("cert-error");
+const certGenerate = document.getElementById("cert-generate");
+const certCancel = document.getElementById("cert-cancel");
+
+function openCertModal() {
+  if (!player) return;
+  const s = getCertStats();
+  certError.textContent = "";
+  certIdentity.textContent = `👤 ${player.prenom} ${player.nom.toUpperCase()}`;
+  if (s.finished) {
+    certTitle.textContent = "🏆 Certificat de réussite";
+    certDesc.innerHTML =
+      `Félicitations, tu as validé les ${s.topicsTotal} thèmes de ${CONFIG.appTitle} !<br>` +
+      "Ton certificat officiel en PDF (avec l'historique de tous tes " +
+      "exercices) sera établi au nom de :";
+  } else {
+    certTitle.textContent = "📜 Attestation de parcours";
+    certDesc.innerHTML =
+      `Séance terminée avant la fin du parcours ? Pas de souci !<br>` +
+      `Le document PDF portera la mention <b>« NON TERMINÉ »</b> ` +
+      `(${s.topicsDone}/${s.topicsTotal} thèmes validés) et inclura ` +
+      `ton état d'avancement et l'historique de tes exercices. ` +
+      `Il sera établi au nom de :`;
+  }
+  certModal.classList.add("visible");
+  certGenerate.focus();
+}
+
+function closeCertModal() {
+  certModal.classList.remove("visible");
+}
+
+async function generateCertificate() {
+  if (!player) return;
+  flushPlayTime();
+  certError.textContent = "";
+  certGenerate.disabled = true;
+  certGenerate.textContent = "Génération en cours…";
+  try {
+    await Certificate.generate({
+      prenom: player.prenom,
+      nom: player.nom,
+      app: {
+        title: CONFIG.appTitle,
+        langLabel: CONFIG.langLabel,
+        slug: CONFIG.appSlug,
+      },
+      stats: getCertStats(),
+      topics: getTopicsForCertificate(),
+      history: getHistoryForCertificate(),
+    });
+    closeCertModal();
+  } catch (e) {
+    certError.textContent = "Échec de la génération du PDF : " + e.message;
+  } finally {
+    certGenerate.disabled = false;
+    certGenerate.textContent = "📜 Télécharger le certificat PDF";
+  }
+}
+
+// --- ÉCRAN D'IDENTIFICATION (début de session) ---
+
+const loginModal = document.getElementById("loginmodal");
+const loginPrenom = document.getElementById("login-prenom");
+const loginNom = document.getElementById("login-nom");
+const loginError = document.getElementById("login-error");
+const loginStart = document.getElementById("login-start");
+const loginSessions = document.getElementById("login-sessions");
+const loginList = document.getElementById("login-list");
+const studentLabel = document.getElementById("student-label");
+
+/** Affiche l'écran d'identification (au chargement et à chaque changement d'étudiant). */
+function showLogin() {
+  loginError.textContent = "";
+  loginPrenom.value = "";
+  loginNom.value = "";
+  if (studentLabel) studentLabel.textContent = "";
+
+  /* Sessions déjà présentes sur ce poste */
+  const players = listPlayers();
+  loginList.innerHTML = "";
+  loginSessions.hidden = players.length === 0;
+  for (const p of players) {
+    const btn = document.createElement("button");
+    btn.className = "login-session";
+    btn.type = "button";
+    const name = document.createElement("span");
+    name.textContent = `👤 ${p.prenom} ${p.nom.toUpperCase()}`;
+    const prog = document.createElement("span");
+    prog.className = "progress" + (p.finished ? " done" : "");
+    prog.textContent = p.finished
+      ? "🏆 terminé"
+      : `${p.topicsDone}/${p.topicsTotal} thèmes`;
+    btn.appendChild(name);
+    btn.appendChild(prog);
+    btn.addEventListener("click", () => beginSession(p.prenom, p.nom));
+    loginList.appendChild(btn);
+  }
+
+  loginModal.classList.add("visible");
+  loginPrenom.focus();
+}
+
+/** Démarre (ou reprend) la session de l'étudiant identifié. */
+function beginSession(prenom, nom) {
+  prenom = String(prenom).trim();
+  nom = String(nom).trim();
+  if (!prenom || !nom) {
+    loginError.textContent = "Merci d'indiquer ton prénom ET ton nom.";
+    (prenom ? loginNom : loginPrenom).focus();
+    return;
+  }
+  player = { prenom, nom };
+  sessionStart = Date.now();
+  loginModal.classList.remove("visible");
+
+  if (studentLabel)
+    studentLabel.textContent = `👤 ${player.prenom} ${player.nom.toUpperCase()}`;
+
+  // Recharge la progression et l'exercice en cours de CET étudiant
+  updateScoreDisplay();
+  updateWeakPointsButton();
+  updateTopicProgress();
+  restoreSession();
+  updateRegistry();
+}
+
+/** Fin de session : sauvegarde et retour à l'écran d'identification. */
+function logoutRequest() {
+  if (!player) return;
+  flushPlayTime();
+  saveExerciseState();
+  updateRegistry();
+  player = null;
+
+  // Remise à zéro de l'interface pour l'étudiant suivant
+  codeMirrorInstance.setValue(DEFAULT_EDITOR_CODE);
+  exerciseContainer.innerHTML = DEFAULT_EXERCISE_HTML;
+  currentExerciseText = "Aucun exercice généré pour le moment.";
+  currentTopic = null;
+  currentExerciseId = null;
+  currentDifficulty = "débutant";
+  sessionErrors = [];
+  lastError = null;
+  if (submitButton) submitButton.disabled = true;
+  const scoreDisplay = document.getElementById("scoreDisplay");
+  if (scoreDisplay) scoreDisplay.style.display = "none";
+  initConsole(
+    "La sortie de ton code s'affichera ici. Clique sur ▶ Tester le code (ou Ctrl + Entrée).",
+  );
+  showLogin();
+}
+
+// --- SAUVEGARDE AUTOMATIQUE (code + exercice en cours) ---
 
 let draftSaveTimer;
 codeMirrorInstance.on("change", () => {
+  if (!player) return;
   clearTimeout(draftSaveTimer);
   draftSaveTimer = setTimeout(() => {
-    localStorage.setItem(DRAFT_CODE_KEY, codeMirrorInstance.getValue());
+    if (!player) return;
+    localStorage.setItem(pKey("draft_code"), codeMirrorInstance.getValue());
   }, 400);
 });
 
 function saveExerciseState() {
+  if (!player) return;
   localStorage.setItem(
-    CURRENT_EX_KEY,
+    pKey("current_exercise"),
     JSON.stringify({
       html: exerciseContainer.innerHTML,
       text: currentExerciseText,
@@ -187,8 +504,9 @@ function saveExerciseState() {
 }
 
 function restoreSession() {
+  if (!player) return;
   try {
-    const saved = JSON.parse(localStorage.getItem(CURRENT_EX_KEY) || "null");
+    const saved = JSON.parse(localStorage.getItem(pKey("current_exercise")) || "null");
     if (saved && saved.text && saved.text.length > 20) {
       exerciseContainer.innerHTML = saved.html;
       currentExerciseText = saved.text;
@@ -200,25 +518,26 @@ function restoreSession() {
   } catch {
     /* sauvegarde corrompue : on repart de zéro */
   }
-  const draft = localStorage.getItem(DRAFT_CODE_KEY);
+  const draft = localStorage.getItem(pKey("draft_code"));
   if (draft) codeMirrorInstance.setValue(draft);
 }
 
 // --- HISTORIQUE DES EXERCICES (revoir / refaire) ---
 
-const EXERCISES_KEY = CONFIG.storagePrefix + "exercises";
 const MAX_EXERCISES = 20;
 let currentExerciseId = null;
 
 function getExercises() {
+  if (!player) return [];
   try {
-    return JSON.parse(localStorage.getItem(EXERCISES_KEY) || "[]");
+    return JSON.parse(localStorage.getItem(pKey("exercises")) || "[]");
   } catch {
     return [];
   }
 }
 
 function saveExerciseToHistory(html, code) {
+  if (!player) return;
   const exercises = getExercises();
   currentExerciseId = Date.now();
   exercises.push({
@@ -234,17 +553,17 @@ function saveExerciseToHistory(html, code) {
   });
   if (exercises.length > MAX_EXERCISES)
     exercises.splice(0, exercises.length - MAX_EXERCISES);
-  localStorage.setItem(EXERCISES_KEY, JSON.stringify(exercises));
+  localStorage.setItem(pKey("exercises"), JSON.stringify(exercises));
 }
 
 function markExerciseResult(isCorrect) {
-  if (!currentExerciseId) return;
+  if (!currentExerciseId || !player) return;
   const exercises = getExercises();
   const entry = exercises.find((e) => e.id === currentExerciseId);
   // On ne rétrograde jamais un exercice déjà réussi
   if (entry && entry.result !== "correct") {
     entry.result = isCorrect ? "correct" : "incorrect";
-    localStorage.setItem(EXERCISES_KEY, JSON.stringify(exercises));
+    localStorage.setItem(pKey("exercises"), JSON.stringify(exercises));
   }
 }
 
@@ -897,13 +1216,12 @@ function formatMarkdown(text) {
 // --- 6. ÉVÉNEMENTS ---
 
 // Initialisation
-updateScoreDisplay();
-updateWeakPointsButton();
-updateTopicProgress();
-restoreSession();
 initConsole(
   "La sortie de ton code s'affichera ici. Clique sur ▶ Tester le code (ou Ctrl + Entrée).",
 );
+// Identification de l'étudiant en début de session (comme MMI Linux Quest) :
+// la progression et le certificat sont enregistrés à son nom sur ce poste.
+showLogin();
 
 const runBtn = document.getElementById("runButton");
 if (runBtn) runBtn.addEventListener("click", runCode);
@@ -953,11 +1271,35 @@ if (closeHistoryButton) {
   });
 }
 
+// Identification, certificat et changement d'étudiant
+if (loginStart)
+  loginStart.addEventListener("click", () =>
+    beginSession(loginPrenom.value, loginNom.value),
+  );
+[loginPrenom, loginNom].forEach((el) => {
+  if (!el) return;
+  el.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      beginSession(loginPrenom.value, loginNom.value);
+    }
+  });
+});
+
+const certButton = document.getElementById("certButton");
+if (certButton) certButton.addEventListener("click", openCertModal);
+if (certGenerate) certGenerate.addEventListener("click", generateCertificate);
+if (certCancel) certCancel.addEventListener("click", closeCertModal);
+
+const logoutButton = document.getElementById("logoutButton");
+if (logoutButton) logoutButton.addEventListener("click", logoutRequest);
+
 // Fermeture des modales en cliquant en dehors ou avec Échap
 window.onclick = function (event) {
   if (event.target == assistantModal) closeAssistant();
   if (event.target == topicModal) topicModal.style.display = "none";
   if (event.target == historyModal) historyModal.style.display = "none";
+  if (event.target == certModal) closeCertModal();
 };
 
 document.addEventListener("keydown", (event) => {
@@ -966,6 +1308,7 @@ document.addEventListener("keydown", (event) => {
   if (topicModal.style.display === "block") topicModal.style.display = "none";
   if (historyModal && historyModal.style.display === "block")
     historyModal.style.display = "none";
+  if (certModal && certModal.classList.contains("visible")) closeCertModal();
 });
 
 if (submitButton) submitButton.addEventListener("click", validateCode);
