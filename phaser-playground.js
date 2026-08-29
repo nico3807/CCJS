@@ -97,10 +97,15 @@ function buildGameDocument(userCode) {
     })();
   `;
 
+  // Le document est chargé via une URL blob, qui n'a pas de chemin de base :
+  // sans cette balise, "assets/sky.png" ne résoudrait vers rien.
+  const base = new URL("./phaser/", window.location.href).href;
+
   return `<!doctype html>
 <html lang="fr">
 <head>
 <meta charset="utf-8">
+<base href="${base}">
 <style>
   /* Phaser mesure la taille de body pour son mode FIT : body doit donc
      occuper toute la fenêtre, et c'est autoCenter qui centre le canvas. */
@@ -152,12 +157,21 @@ function loadExample(id) {
 
 function fillExampleSelect() {
   const select = document.getElementById("exampleSelect");
+  const groups = new Map();
+
   PHASER_EXAMPLES.forEach((example) => {
+    if (!groups.has(example.group)) {
+      const optgroup = document.createElement("optgroup");
+      optgroup.label = example.group;
+      select.appendChild(optgroup);
+      groups.set(example.group, optgroup);
+    }
     const option = document.createElement("option");
     option.value = example.id;
     option.textContent = example.label;
-    select.appendChild(option);
+    groups.get(example.group).appendChild(option);
   });
+
   select.addEventListener("change", () => loadExample(select.value));
 }
 
