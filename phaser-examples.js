@@ -397,6 +397,7 @@ function preload() {
 function create() {
   this.add.image(400, 300, 'img_ciel');
 
+  // @trou Créer le groupe STATIQUE des 5 plates-formes (200/584, 600/584, 50/300, 600/450, 750/270), puis le collider avec le joueur
   // Un groupe statique : des corps qui ne bougent pas et ignorent la gravité.
   groupe_plateformes = this.physics.add.staticGroup();
   groupe_plateformes.create(200, 584, 'img_plateforme');
@@ -404,14 +405,18 @@ function create() {
   groupe_plateformes.create(50, 300, 'img_plateforme');
   groupe_plateformes.create(600, 450, 'img_plateforme');
   groupe_plateformes.create(750, 270, 'img_plateforme');
+  // @fin
 
   player = this.physics.add.sprite(100, 450, 'img_perso');
   player.setBounce(0.2);
   player.setCollideWorldBounds(true);
+  // @trou Faire entrer le joueur en collision avec les plates-formes
   this.physics.add.collider(player, groupe_plateformes);
+  // @fin
 
   clavier = this.input.keyboard.createCursorKeys();
 
+  // @trou Créer les 3 animations : anim_tourne_gauche (frames 0 à 3), anim_tourne_droite (5 à 8) et anim_face (frame 4)
   // Une animation est une suite de frames jouée à une cadence donnée.
   this.anims.create({
     key: 'anim_tourne_gauche',
@@ -430,7 +435,9 @@ function create() {
     frames: [{ key: 'img_perso', frame: 4 }],
     frameRate: 20
   });
+  // @fin
 
+  // @trou Créer le groupe des 10 étoiles (une tous les 70 px), leur donner un rebond aléatoire, et détecter leur ramassage avec overlap()
   // 10 étoiles réparties tous les 70 pixels.
   groupe_etoiles = this.physics.add.group();
   for (let i = 0; i < 10; i++) {
@@ -445,15 +452,18 @@ function create() {
 
   // overlap = simple superposition (pas de rebond), collider = vraie collision.
   this.physics.add.overlap(player, groupe_etoiles, ramasserEtoile, null, this);
+  // @fin
 
   zone_texte_score = this.add.text(16, 16, 'score : 0', {
     fontSize: '32px',
     fill: '#000'
   });
 
+  // @trou Créer le groupe des bombes : elles rebondissent sur les plates-formes et déclenchent chocAvecBombe() au contact du joueur
   groupe_bombes = this.physics.add.group();
   this.physics.add.collider(groupe_bombes, groupe_plateformes);
   this.physics.add.collider(player, groupe_bombes, chocAvecBombe, null, this);
+  // @fin
 }
 
 function update() {
@@ -461,6 +471,7 @@ function update() {
     return;
   }
 
+  // @trou Déplacer le joueur à 160 px/s avec les flèches gauche/droite en jouant l'animation qui va bien, et le laisser sauter (-300) seulement s'il touche le sol
   if (clavier.right.isDown) {
     player.setVelocityX(160);
     player.anims.play('anim_tourne_droite', true);
@@ -476,6 +487,7 @@ function update() {
   if (clavier.up.isDown && player.body.touching.down) {
     player.setVelocityY(-300);
   }
+  // @fin
 }
 
 function ramasserEtoile(un_player, une_etoile) {
@@ -564,6 +576,7 @@ function create() {
   // 2e argument : la clé de l'image chargée dans preload.
   const tileset = carteDuNiveau.addTilesetImage('tuiles_de_jeu', 'tuiles_de_jeu');
 
+  // @trou Créer les calques "calque_background" puis "calque_plateformes", et rendre solides les tuiles ayant la propriété estSolide
   // Les calques sont créés dans l'ordre de leur affichage.
   carteDuNiveau.createLayer('calque_background', tileset);
   const calque_plateformes = carteDuNiveau.createLayer('calque_plateformes', tileset);
@@ -571,11 +584,14 @@ function create() {
   // Dans Tiled, une propriété personnalisée "estSolide" a été posée sur les
   // tuiles pleines : Phaser s'en sert pour savoir lesquelles bloquent.
   calque_plateformes.setCollisionByProperty({ estSolide: true });
+  // @fin
 
   player = this.physics.add.sprite(100, 300, 'img_perso');
   player.setBounce(0.2);
   player.setCollideWorldBounds(true);
+  // @trou Faire entrer le joueur en collision avec le calque des plates-formes
   this.physics.add.collider(player, calque_plateformes);
+  // @fin
 
   this.anims.create({
     key: 'anim_tourne_gauche',
@@ -597,10 +613,12 @@ function create() {
 
   clavier = this.input.keyboard.createCursorKeys();
 
+  // @trou Donner au monde physique ET à la caméra la taille de la carte, puis demander à la caméra de suivre le joueur
   // Le monde physique et la caméra doivent adopter la taille de la carte.
   this.physics.world.setBounds(0, 0, LARGEUR_MONDE, HAUTEUR_MONDE);
   this.cameras.main.setBounds(0, 0, LARGEUR_MONDE, HAUTEUR_MONDE);
   this.cameras.main.startFollow(player);
+  // @fin
 
   console.log('Carte chargée : ' + carteDuNiveau.width + ' x ' + carteDuNiveau.height + ' tuiles.');
 }
@@ -617,10 +635,12 @@ function update() {
     player.anims.play('anim_face', true);
   }
 
+  // @trou Faire sauter le joueur (-300) : sur une tilemap, c'est blocked.down qu'il faut tester, pas touching.down
   // Sur une tilemap, on teste blocked.down plutôt que touching.down.
   if (clavier.up.isDown && player.body.blocked.down) {
     player.setVelocityY(-300);
   }
+  // @fin
 }
 
 new Phaser.Game(config);`,
@@ -671,6 +691,7 @@ function create() {
   groupe_plateformes.create(200, 584, 'img_plateforme');
   groupe_plateformes.create(600, 584, 'img_plateforme');
 
+  // @trou Créer en masse 8 cibles espacées de 107 px, donner à chacune un attribut pointsVie entre 1 et 5, et les faire rebondir sur les plates-formes
   // Création en masse : 8 cibles espacées de 107 pixels.
   groupeCibles = this.physics.add.group({
     key: 'img_cible',
@@ -685,6 +706,7 @@ function create() {
     cibleTrouvee.setBounce(1);
   });
   this.physics.add.collider(groupeCibles, groupe_plateformes);
+  // @fin
 
   player = this.physics.add.sprite(100, 450, 'img_perso');
   player.setBounce(0.2);
@@ -716,6 +738,7 @@ function create() {
   // addKey permet d'utiliser n'importe quelle touche.
   boutonFeu = this.input.keyboard.addKey('A');
 
+  // @trou Créer le groupe des balles, appeler toucher() quand une balle touche une cible, et détruire les balles qui sortent du monde
   groupeBullets = this.physics.add.group();
   this.physics.add.overlap(groupeBullets, groupeCibles, toucher, null, this);
 
@@ -727,6 +750,7 @@ function create() {
       objet.destroy();
     }
   });
+  // @fin
 
   this.add.text(16, 16, 'A pour tirer', { fontSize: '24px', fill: '#000' });
 }
@@ -749,13 +773,16 @@ function update() {
     player.setVelocityY(-330);
   }
 
+  // @trou Appeler tirer(player) à l'appui sur A — avec JustDown, sinon une seule pression lâcherait une rafale
   // JustDown ne se déclenche qu'au moment de l'appui : une balle par pression.
   if (Phaser.Input.Keyboard.JustDown(boutonFeu)) {
     tirer(player);
   }
+  // @fin
 }
 
 function tirer(player) {
+  // @trou Créer la balle devant le joueur selon player.direction : sans gravité, à 1000 px/s, et signalée quand elle atteint le bord du monde
   let coefDir;
   if (player.direction === 'left') {
     coefDir = -1;
@@ -768,14 +795,17 @@ function tirer(player) {
   bullet.setCollideWorldBounds(true);
   bullet.body.onWorldBounds = true;      // active l'événement "worldbounds"
   bullet.setVelocity(1000 * coefDir, 0);
+  // @fin
 }
 
 function toucher(bullet, cible) {
+  // @trou Retirer un point de vie à la cible, la détruire s'il tombe à zéro, et détruire la balle dans tous les cas
   cible.pointsVie--;
   if (cible.pointsVie === 0) {
     cible.destroy();
   }
   bullet.destroy();
+  // @fin
 }
 
 new Phaser.Game(config);`,
@@ -856,20 +886,24 @@ class Selection extends Phaser.Scene {
     this.physics.add.collider(this.player, this.groupe_plateformes);
     this.clavier = this.input.keyboard.createCursorKeys();
 
+    // @trou Poser les 3 portes en staticSprite : porte1 (300/548), porte2 (120/394) et porte3 (650/264)
     // staticSprite : un décor immobile, insensible à la gravité.
     this.porte1 = this.physics.add.staticSprite(300, 548, 'img_porte1');
     this.porte2 = this.physics.add.staticSprite(120, 394, 'img_porte2');
     this.porte3 = this.physics.add.staticSprite(650, 264, 'img_porte3');
+    // @fin
   }
 
   update() {
     deplacer(this.player, this.clavier);
 
+    // @trou À l'appui sur ESPACE, si le joueur est sur une porte, lancer la scène du niveau correspondant avec this.scene.start()
     if (Phaser.Input.Keyboard.JustDown(this.clavier.space)) {
       if (this.physics.overlap(this.player, this.porte1)) this.scene.start('niveau1');
       if (this.physics.overlap(this.player, this.porte2)) this.scene.start('niveau2');
       if (this.physics.overlap(this.player, this.porte3)) this.scene.start('niveau3');
     }
+    // @fin
   }
 }
 
@@ -908,17 +942,21 @@ class Niveau extends Phaser.Scene {
     this.physics.add.collider(this.player, this.groupe_plateformes);
     this.clavier = this.input.keyboard.createCursorKeys();
 
+    // @trou Poser la porte de retour en (100, 548)
     this.porte_retour = this.physics.add.staticSprite(100, 548, 'img_porte1');
+    // @fin
   }
 
   update() {
     deplacer(this.player, this.clavier);
 
+    // @trou À l'appui sur ESPACE devant la porte de retour, revenir à la scène "selection"
     if (Phaser.Input.Keyboard.JustDown(this.clavier.space)) {
       if (this.physics.overlap(this.player, this.porte_retour)) {
         this.scene.start('selection');
       }
     }
+    // @fin
   }
 }
 
@@ -1036,6 +1074,7 @@ function create() {
   player.setCollideWorldBounds(true);
   this.physics.add.collider(player, groupe_plateformes);
 
+  // @trou Créer le joueur 2 en (650, 450), le teinter en rose (0xff77aa), le faire tenir sur les plates-formes et se bousculer avec le joueur 1
   // Le second joueur réutilise le même spritesheet : une teinte suffit à
   // les distinguer, inutile de charger une seconde image.
   player2 = this.physics.add.sprite(650, 450, 'img_perso');
@@ -1046,11 +1085,14 @@ function create() {
 
   // Les deux joueurs se bousculent.
   this.physics.add.collider(player, player2);
+  // @fin
 
   clavier = this.input.keyboard.createCursorKeys();
+  // @trou Déclarer les touches Z, Q et D du joueur 2 avec addKey()
   J2Haut = this.input.keyboard.addKey('Z');
   J2Gauche = this.input.keyboard.addKey('Q');
   J2Droite = this.input.keyboard.addKey('D');
+  // @fin
 
   this.add.text(16, 16, 'J1 : flèches     J2 : Z Q D', {
     fontSize: '22px',
@@ -1074,6 +1116,7 @@ function update() {
     player.setVelocityY(-330);
   }
 
+  // @trou Déplacer le joueur 2 avec Q et D, et le faire sauter avec Z, exactement comme le joueur 1
   // Joueur 2 : exactement la même logique, avec ses propres touches.
   if (J2Gauche.isDown) {
     player2.setVelocityX(-160);
@@ -1088,6 +1131,7 @@ function update() {
   if (J2Haut.isDown && player2.body.blocked.down) {
     player2.setVelocityY(-330);
   }
+  // @fin
 }
 
 new Phaser.Game(config);`,
@@ -1134,9 +1178,11 @@ function preload() {
     frameHeight: 48
   });
 
+  // @trou Charger avec load.audio() le bruitage 'coupDeFeu' (assets/gun.mp3) et la musique 'background' (assets/guile.mp3)
   // load.audio(clé, fichier)
   this.load.audio('coupDeFeu', 'assets/gun.mp3');
   this.load.audio('background', 'assets/guile.mp3');
+  // @fin
 }
 
 function create() {
@@ -1173,21 +1219,25 @@ function create() {
   boutonFeu = this.input.keyboard.addKey('A');
   boutonMusique = this.input.keyboard.addKey('M');
 
+  // @trou Créer les deux sons avec sound.add() : son_feu, et musique_de_fond en boucle (loop) à un volume de 0.4
   // sound.add() enregistre le son et rend un objet manipulable.
   son_feu = this.sound.add('coupDeFeu');
   musique_de_fond = this.sound.add('background', { loop: true, volume: 0.4 });
+  // @fin
 
   zone_texte = this.add.text(16, 16, 'Clique dans le jeu pour lancer la musique', {
     fontSize: '20px',
     fill: '#000'
   });
 
+  // @trou Au premier clic (input.once 'pointerdown'), lancer la musique et changer le texte affiché
   // Premier clic : on a le droit de jouer du son.
   this.input.once('pointerdown', function () {
     musique_de_fond.play();
     zone_texte.setText('A : tirer     M : couper / relancer la musique');
     console.log('Musique lancée.');
   });
+  // @fin
 }
 
 function update() {
@@ -1206,6 +1256,7 @@ function update() {
     player.setVelocityY(-330);
   }
 
+  // @trou Sur A jouer le bruitage (volume 0.6), et sur M arrêter la musique si isPlaying, sinon la relancer
   // play() accepte des options : volume, rate (vitesse), detune, loop...
   if (Phaser.Input.Keyboard.JustDown(boutonFeu)) {
     son_feu.play({ volume: 0.6 });
@@ -1220,6 +1271,7 @@ function update() {
       console.log('Musique relancée.');
     }
   }
+  // @fin
 }
 
 new Phaser.Game(config);`,
@@ -1260,6 +1312,7 @@ class Menu extends Phaser.Scene {
       fill: '#000'
     }).setOrigin(0.5).setDepth(1);
 
+    // @trou Dessiner le bouton : un rectangle bleu foncé en (400, 380) de 260x80, et par-dessus le libellé « ▶ JOUER » centré
     // Le bouton est dessiné plutôt qu'importé, mais le principe est le même
     // qu'avec une image : un objet auquel on ajoute setInteractive().
     const bouton_play = this.add.rectangle(400, 380, 260, 80, 0x1e3a5f).setDepth(1);
@@ -1267,7 +1320,9 @@ class Menu extends Phaser.Scene {
       fontSize: '32px',
       fill: '#ffffff'
     }).setOrigin(0.5).setDepth(2);
+    // @fin
 
+    // @trou Rendre le bouton interactif, le faire réagir au survol (pointerover / pointerout) et lancer la scène 'niveau1' sur pointerup
     // Sans setInteractive(), l'objet ne reçoit aucun événement de souris.
     bouton_play.setInteractive({ useHandCursor: true });
 
@@ -1286,6 +1341,7 @@ class Menu extends Phaser.Scene {
       console.log('Lancement du niveau 1');
       this.scene.start('niveau1');
     });
+    // @fin
 
     this.add.text(400, 500, 'Clique sur le bouton', {
       fontSize: '20px',
@@ -1354,9 +1410,11 @@ class Niveau1 extends Phaser.Scene {
       this.player.setVelocityY(-330);
     }
 
+    // @trou Revenir au menu quand on appuie sur ESPACE (JustDown + scene.start)
     if (Phaser.Input.Keyboard.JustDown(this.clavier.space)) {
       this.scene.start('menu');
     }
+    // @fin
   }
 }
 
@@ -1446,11 +1504,14 @@ function create() {
   player.setBounce(0.2);
   this.physics.add.collider(player, groupe_plateformes);
 
+  // @trou Activer la collision avec les bords du monde, puis demander à la hitbox du joueur d'émettre l'événement 'worldbounds'
   // 1. Le joueur se cogne aux bords du monde.
   player.setCollideWorldBounds(true);
   // 2. Sa hitbox émet un événement quand elle touche un bord.
   player.body.onWorldBounds = true;
+  // @fin
 
+  // @trou Écouter 'worldbounds' : si c'est le joueur ET le bord du bas (down), mettre la physique en pause, le teinter en rouge et passer gameOver à true
   // 3. On écoute l'événement. Les booléens up/down/left/right indiquent QUEL
   //    bord a été touché : ici on ne réagit qu'au bord du bas.
   //    Le 3e argument (this) est indispensable : sans lui, this.physics
@@ -1467,6 +1528,7 @@ function create() {
     },
     this
   );
+  // @fin
 
   clavier = this.input.keyboard.createCursorKeys();
   boutonRestart = this.input.keyboard.addKey('R');
@@ -1478,6 +1540,7 @@ function create() {
 }
 
 function update() {
+  // @trou Sur la touche R, relancer la scène avec scene.restart() ; et si gameOver est vrai, sortir de update() sans rien faire
   if (Phaser.Input.Keyboard.JustDown(boutonRestart)) {
     this.scene.restart();
     return;
@@ -1486,6 +1549,7 @@ function update() {
   if (gameOver) {
     return;
   }
+  // @fin
 
   if (clavier.left.isDown) {
     player.setVelocityX(-160);
@@ -1555,11 +1619,14 @@ function create() {
   groupe_plateformes.create(200, 584, 'img_plateforme');
   groupe_plateformes.create(600, 584, 'img_plateforme');
 
+  // @trou Placer la porte en (550, 508) avec staticSprite, et lui ajouter un attribut « ouverte » valant false
   // staticSprite : la porte ne tombe pas et ne bouge pas.
   porte = this.physics.add.staticSprite(550, 508, 'img_porte');
   // Attribut inventé pour mémoriser l'état de la porte.
   porte.ouverte = false;
+  // @fin
 
+  // @trou Créer les animations 'anim_ouvreporte' (images 0 à 5) et 'anim_fermeporte' (images 5 à 0, donc à l'envers), sans répétition
   // Deux animations sur le même spritesheet : la seconde le parcourt à
   // l'envers (start plus grand que end) pour refermer la porte.
   this.anims.create({
@@ -1574,6 +1641,7 @@ function create() {
     frameRate: 12,
     repeat: 0
   });
+  // @fin
 
   this.anims.create({
     key: 'anim_tourne_gauche',
@@ -1622,6 +1690,7 @@ function update() {
     player.setVelocityY(-330);
   }
 
+  // @trou Si ESPACE vient d'être pressée (JustDown) ET que le joueur chevauche la porte, jouer l'animation d'ouverture ou de fermeture selon porte.ouverte
   // Deux conditions : la touche vient d'être pressée (JustDown, et non
   // isDown qui serait vrai à chaque frame), et le joueur touche la porte.
   if (Phaser.Input.Keyboard.JustDown(clavier.space) &&
@@ -1636,6 +1705,7 @@ function update() {
       console.log('Porte fermée');
     }
   }
+  // @fin
 }
 
 new Phaser.Game(config);`,
@@ -1720,6 +1790,7 @@ function create() {
     fill: '#000'
   });
 
+  // @trou Afficher un message de bienvenue, puis le détruire au bout de 3 secondes avec time.delayedCall()
   /* 1. delayedCall : une seule exécution, après un délai.
         Ici un message de bienvenue qui s'efface au bout de 3 secondes. */
   const message = this.add.text(400, 150, 'Ce message disparaît dans 3 s...', {
@@ -1731,6 +1802,7 @@ function create() {
     message.destroy();
     console.log('Message effacé par delayedCall.');
   }, null, this);
+  // @fin
 
   /* 2. addEvent avec repeat: -1 : exécution répétée à l'infini.
         Une étoile réapparaît à une position aléatoire toutes les 2 s. */
@@ -1738,6 +1810,7 @@ function create() {
   etoile.setBounceY(0.6);
   this.physics.add.collider(etoile, groupe_plateformes);
 
+  // @trou Avec time.addEvent() et repeat: -1, replacer l'étoile toutes les 2 s à une position horizontale aléatoire (Phaser.Math.Between) en haut de l'écran
   this.time.addEvent({
     delay: 2000,
     callback: function () {
@@ -1748,6 +1821,7 @@ function create() {
     callbackScope: this,
     repeat: -1
   });
+  // @fin
 
   console.log('Timers programmés.');
 }
@@ -1776,9 +1850,11 @@ function update() {
 }
 
 function tirer(player) {
+  // @trou Sortir immédiatement de la fonction si le joueur est encore en rechargement (peutTirer vaut false)
   if (player.peutTirer === false) {
     return;
   }
+  // @fin
 
   const balle = this.add.circle(player.x, player.y - 4, 6, 0xff0000);
   this.tweens.add({
@@ -1788,6 +1864,7 @@ function tirer(player) {
     onComplete: function () { balle.destroy(); }
   });
 
+  // @trou Interdire le tir, afficher « Rechargement... », puis réarmer le joueur 2 secondes plus tard avec delayedCall()
   player.peutTirer = false;
   zone_texte_etat.setText('Rechargement...');
 
@@ -1796,6 +1873,7 @@ function tirer(player) {
     player.peutTirer = true;
     zone_texte_etat.setText('A : tirer');
   }, null, this);
+  // @fin
 }
 
 new Phaser.Game(config);`,
@@ -1865,9 +1943,12 @@ function create() {
   // Un sprite dynamique, pas un staticSprite : la hitbox d'un corps statique
   // ne suivrait pas le déplacement de l'image.
   plateforme_mobile = this.physics.add.sprite(400, 500, 'img_plateforme_mobile');
+  // @trou Empêcher la plate-forme mobile de tomber (allowGravity) et de se faire pousser par le joueur (immovable)
   plateforme_mobile.body.allowGravity = false;  // elle ne tombe pas
   plateforme_mobile.body.immovable = true;      // le joueur ne la pousse pas
+  // @fin
 
+  // @trou Créer le tween qui monte la plate-forme de 300 px en 2 s, en yoyo et en boucle infinie, mais en pause au départ (paused: true)
   // paused: true — le tween est créé mais ne démarre pas tout de suite.
   tween_mouvement = this.tweens.add({
     targets: [plateforme_mobile],
@@ -1881,10 +1962,13 @@ function create() {
     repeatDelay: 1000,     // temps d'attente en bas
     repeat: -1
   });
+  // @fin
 
+  // @trou Placer le levier en (700, 538) avec staticSprite et lui ajouter un attribut « actif » valant false
   levier = this.physics.add.staticSprite(700, 538, 'img_levier');
   // On évite le nom "active", déjà utilisé en interne par Phaser.
   levier.actif = false;
+  // @fin
 
   this.anims.create({
     key: 'anim_tourne_gauche',
@@ -1935,6 +2019,7 @@ function update() {
     player.setVelocityY(-330);
   }
 
+  // @trou Sur ESPACE devant le levier, basculer son état : retourner son image (flipX) et mettre le tween en pause ou le relancer (pause / resume)
   if (Phaser.Input.Keyboard.JustDown(clavier.space) &&
       this.physics.overlap(player, levier)) {
     if (levier.actif === true) {
@@ -1949,6 +2034,7 @@ function update() {
       console.log('Levier activé');
     }
   }
+  // @fin
 }
 
 new Phaser.Game(config);`,

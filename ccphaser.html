@@ -38,8 +38,11 @@
         </div>
         <div class="buttons-row">
           <button id="runButton" title="Ctrl + Entrée">▶ Lancer le jeu <kbd>Ctrl+↵</kbd></button>
-          <button id="resetButton" class="secondary-btn" title="Revenir au code d'origine de l'exemple">
+          <button id="resetButton" class="secondary-btn" title="Revenir au code de départ de l'exercice">
             ↺ Réinitialiser
+          </button>
+          <button id="solutionButton" class="secondary-btn" title="Voir à quoi doit ressembler le jeu terminé" hidden>
+            👁 Résultat attendu
           </button>
         </div>
       </div>
@@ -63,6 +66,24 @@
             pour lui donner le focus.
           </p>
         </div>
+      </div>
+    </div>
+
+    <!-- Pop-up : le jeu terminé tourne ici, sans que son code soit montré. -->
+    <div id="solutionModal" class="modal-overlay" role="dialog" aria-modal="true"
+         aria-labelledby="solutionLabel" hidden>
+      <div class="modal-box">
+        <div class="modal-bar">
+          <h3 id="solutionLabel"></h3>
+          <button id="solutionClose" title="Fermer (Échap)" aria-label="Fermer">✕</button>
+        </div>
+        <div class="modal-stage">
+          <iframe id="solutionFrame" title="Résultat attendu de l'exercice"></iframe>
+        </div>
+        <p class="modal-hint">
+          Voici le jeu une fois terminé. À toi de retrouver le code —
+          <strong>clique dans la zone de jeu</strong> pour utiliser le clavier.
+        </p>
       </div>
     </div>
 

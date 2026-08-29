@@ -8,7 +8,10 @@ const PHASER_CDN =
 
 let cmEditor = null;
 let currentExample = PHASER_EXAMPLES[0];
-let currentObjectUrl = null;
+
+// Une URL blob par iframe (l'aperçu et la pop-up de correction), pour pouvoir
+// libérer la précédente à chaque relance.
+const frameUrls = new Map();
 
 /* ── Console ─────────────────────────────────────────────────────────────── */
 
@@ -37,12 +40,15 @@ function appendConsole(type, message) {
 window.addEventListener("message", (event) => {
   const data = event.data;
   if (!data || data.source !== "phaser-playground") return;
+  // La pop-up de correction tourne dans sa propre iframe : ses messages ne
+  // doivent pas polluer la console de l'étudiant.
+  if (data.channel !== "editeur") return;
   appendConsole(data.type, data.message);
 });
 
 /* ── Construction du document de jeu ─────────────────────────────────────── */
 
-function buildGameDocument(userCode) {
+function buildGameDocument(userCode, channel) {
   // Une balise fermante dans une chaîne du code étudiant casserait le document.
   const safeCode = String(userCode).replace(/<\/script/gi, "<\\/script");
 
@@ -75,6 +81,7 @@ function buildGameDocument(userCode) {
         try {
           parent.postMessage({
             source: 'phaser-playground',
+            channel: ${JSON.stringify(channel)},
             type: type,
             message: formatArgs(args)
           }, '*');
@@ -124,23 +131,86 @@ function buildGameDocument(userCode) {
 
 /* ── Exécution ───────────────────────────────────────────────────────────── */
 
-function runCode() {
-  const frame = document.getElementById("gameFrame");
-  const code = cmEditor.getValue();
-
-  clearConsole();
-
+function runInFrame(frame, code, channel) {
   // On libère l'URL précédente pour ne pas fuir de mémoire.
-  if (currentObjectUrl) URL.revokeObjectURL(currentObjectUrl);
+  const previous = frameUrls.get(channel);
+  if (previous) URL.revokeObjectURL(previous);
 
-  const blob = new Blob([buildGameDocument(code)], { type: "text/html" });
-  currentObjectUrl = URL.createObjectURL(blob);
-  frame.src = currentObjectUrl;
+  const blob = new Blob([buildGameDocument(code, channel)], { type: "text/html" });
+  const url = URL.createObjectURL(blob);
+  frameUrls.set(channel, url);
+  frame.src = url;
+}
+
+function runCode() {
+  clearConsole();
+  runInFrame(document.getElementById("gameFrame"), cmEditor.getValue(), "editeur");
 }
 
 function resetCode() {
-  cmEditor.setValue(currentExample.code);
+  cmEditor.setValue(codeDepart(currentExample.code));
   runCode();
+}
+
+/* ── Code à trous ────────────────────────────────────────────────────────── */
+
+/* Les exemples de tutoriels sont écrits en entier, mais les passages que
+   l'étudiant doit trouver sont encadrés par deux marqueurs :
+
+     // @trou Créer le groupe de plates-formes
+     ...lignes de solution...
+     // @fin
+
+   L'éditeur n'affiche que la consigne ; la solution ne sert qu'à faire tourner
+   l'aperçu du résultat attendu dans la pop-up. */
+
+const MARQUEUR_DEBUT = /^([ \t]*)\/\/ @trou (.+)$/;
+const MARQUEUR_FIN = /^[ \t]*\/\/ @fin\s*$/;
+
+function codeDepart(code) {
+  const lignes = [];
+  let ouvert = null;
+
+  code.split("\n").forEach((ligne) => {
+    if (ouvert) {
+      if (MARQUEUR_FIN.test(ligne)) {
+        lignes.push(ouvert[1] + "/* À COMPLETER : " + ouvert[2] + " */");
+        ouvert = null;
+      }
+      return;
+    }
+    const debut = ligne.match(MARQUEUR_DEBUT);
+    if (debut) ouvert = debut;
+    else lignes.push(ligne);
+  });
+
+  return lignes.join("\n");
+}
+
+function codeSolution(code) {
+  return code.split("\n").filter((ligne) => {
+    return !MARQUEUR_DEBUT.test(ligne) && !MARQUEUR_FIN.test(ligne);
+  }).join("\n");
+}
+
+/* ── Pop-up « résultat attendu » ─────────────────────────────────────────── */
+
+function openSolution() {
+  const modal = document.getElementById("solutionModal");
+  modal.hidden = false;
+  document.getElementById("solutionLabel").textContent = currentExample.label;
+  runInFrame(
+    document.getElementById("solutionFrame"),
+    codeSolution(currentExample.code),
+    "solution"
+  );
+}
+
+function closeSolution() {
+  const modal = document.getElementById("solutionModal");
+  modal.hidden = true;
+  // On vide l'iframe pour arrêter la boucle de rendu du jeu.
+  document.getElementById("solutionFrame").src = "about:blank";
 }
 
 /* ── Exemples ────────────────────────────────────────────────────────────── */
@@ -151,7 +221,12 @@ function loadExample(id) {
 
   currentExample = example;
   document.getElementById("exampleDescription").textContent = example.description;
-  cmEditor.setValue(example.code);
+
+  const depart = codeDepart(example.code);
+  // Sans trou à combler, montrer le résultat attendu n'apporterait rien.
+  document.getElementById("solutionButton").hidden = depart === example.code;
+
+  cmEditor.setValue(depart);
   runCode();
 }
 
@@ -195,6 +270,15 @@ document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("runButton").addEventListener("click", runCode);
   document.getElementById("resetButton").addEventListener("click", resetCode);
   document.getElementById("clearConsoleButton").addEventListener("click", clearConsole);
+
+  document.getElementById("solutionButton").addEventListener("click", openSolution);
+  document.getElementById("solutionClose").addEventListener("click", closeSolution);
+  document.getElementById("solutionModal").addEventListener("click", (event) => {
+    if (event.target.id === "solutionModal") closeSolution();
+  });
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") closeSolution();
+  });
 
   loadExample(PHASER_EXAMPLES[0].id);
 });
