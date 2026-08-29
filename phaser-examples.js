@@ -1,10 +1,26 @@
 /* Exemples Phaser du module Code Coach Phaser.
-   Aucune image externe : les textures sont générées à la volée avec Graphics,
-   les exemples fonctionnent donc même sans accès au CDN d'assets. */
+
+   Deux familles :
+   - "Découverte" : notions isolées, textures générées avec Graphics, aucun
+     fichier externe.
+   - "Tutoriels" : les exemples des tutoriels de darties.fr, qui chargent les
+     assets depuis phaser/assets/.
+
+   Les articles sont écrits en « delta » (ils ne donnent que les lignes à
+   ajouter à un projet de base) et laissent des passages à compléter. Les
+   exemples ci-dessous sont donc consolidés en un bloc unique exécutable.
+
+   Conventions communes aux exemples de la famille "Tutoriels", reprises des
+   TP : noms français (img_ciel, groupe_plateformes, clavier, anim_face...),
+   flèche haut pour sauter, barre espace réservée aux interactions. */
 
 const PHASER_EXAMPLES = [
+  /* ══════════════════════════════════════════════════════════════════════
+     DÉCOUVERTE
+     ══════════════════════════════════════════════════════════════════════ */
   {
     id: "bienvenue",
+    group: "Découverte",
     label: "1 · Bienvenue (texte + tween)",
     description:
       "La scène la plus simple : un texte centré, animé en boucle par un tween.",
@@ -46,6 +62,7 @@ new Phaser.Game(config);`,
   },
   {
     id: "formes",
+    group: "Découverte",
     label: "2 · Formes géométriques",
     description:
       "Dessiner sans aucune image : rectangles, cercles, triangles et étoiles.",
@@ -97,6 +114,7 @@ new Phaser.Game(config);`,
   },
   {
     id: "physique",
+    group: "Découverte",
     label: "3 · Physique (gravité + rebond)",
     description:
       "Le moteur Arcade Physics : 12 balles soumises à la gravité qui rebondissent sur les bords.",
@@ -149,6 +167,7 @@ new Phaser.Game(config);`,
   },
   {
     id: "clavier",
+    group: "Découverte",
     label: "4 · Déplacement au clavier",
     description:
       "Lire les touches fléchées dans update() pour déplacer un objet. Clique d'abord dans le jeu.",
@@ -207,6 +226,7 @@ new Phaser.Game(config);`,
   },
   {
     id: "souris",
+    group: "Découverte",
     label: "5 · Interaction souris",
     description:
       "Réagir aux clics avec les événements du pointeur pour faire éclore des cercles colorés.",
@@ -249,6 +269,7 @@ new Phaser.Game(config);`,
   },
   {
     id: "plateformes",
+    group: "Découverte",
     label: "6 · Plateformes et collisions",
     description:
       "Un mini jeu de plateforme : gravité, sol statique, saut conditionné au contact du sol.",
@@ -316,6 +337,1617 @@ function update() {
   // On ne saute que si le héros touche quelque chose sous lui.
   if (touches.up.isDown && heros.body.touching.down) {
     heros.setVelocityY(-480);
+  }
+}
+
+new Phaser.Game(config);`,
+  },
+
+  /* ══════════════════════════════════════════════════════════════════════
+     TUTORIELS
+     ══════════════════════════════════════════════════════════════════════ */
+  {
+    id: "tuto-plateforme",
+    group: "Tutoriels",
+    label: "T1 · Premier jeu de plate-forme",
+    description:
+      "Le jeu complet : plates-formes, spritesheet animé, étoiles à ramasser, score et bombes.",
+    code: `/* Tutoriel : créer son premier jeu de plate-forme en découvrant Phaser.
+   Flèches gauche/droite pour courir, flèche haut pour sauter. */
+
+const config = {
+  type: Phaser.AUTO,
+  width: 800,
+  height: 600,
+  scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
+  physics: {
+    default: 'arcade',
+    arcade: {
+      gravity: { y: 300 },  // accélération verticale en pixels/s²
+      debug: false          // à passer à true pour voir les hitbox
+    }
+  },
+  scene: { preload: preload, create: create, update: update }
+};
+
+// Variables globales : accessibles depuis preload, create et update.
+let groupe_plateformes;
+let player;
+let clavier;
+let groupe_etoiles;
+let groupe_bombes;
+let score = 0;
+let zone_texte_score;
+let gameOver = false;
+
+// preload() est appelée une seule fois, avant create().
+function preload() {
+  this.load.image('img_ciel', 'assets/sky.png');
+  this.load.image('img_plateforme', 'assets/platform.png');
+  this.load.image('img_etoile', 'assets/star.png');
+  this.load.image('img_bombe', 'assets/bomb.png');
+
+  // Un spritesheet découpe une image en frames de taille fixe.
+  this.load.spritesheet('img_perso', 'assets/dude.png', {
+    frameWidth: 32,
+    frameHeight: 48
+  });
+}
+
+function create() {
+  this.add.image(400, 300, 'img_ciel');
+
+  // Un groupe statique : des corps qui ne bougent pas et ignorent la gravité.
+  groupe_plateformes = this.physics.add.staticGroup();
+  groupe_plateformes.create(200, 584, 'img_plateforme');
+  groupe_plateformes.create(600, 584, 'img_plateforme');
+  groupe_plateformes.create(50, 300, 'img_plateforme');
+  groupe_plateformes.create(600, 450, 'img_plateforme');
+  groupe_plateformes.create(750, 270, 'img_plateforme');
+
+  player = this.physics.add.sprite(100, 450, 'img_perso');
+  player.setBounce(0.2);
+  player.setCollideWorldBounds(true);
+  this.physics.add.collider(player, groupe_plateformes);
+
+  clavier = this.input.keyboard.createCursorKeys();
+
+  // Une animation est une suite de frames jouée à une cadence donnée.
+  this.anims.create({
+    key: 'anim_tourne_gauche',
+    frames: this.anims.generateFrameNumbers('img_perso', { start: 0, end: 3 }),
+    frameRate: 10,
+    repeat: -1              // -1 = boucle infinie
+  });
+  this.anims.create({
+    key: 'anim_tourne_droite',
+    frames: this.anims.generateFrameNumbers('img_perso', { start: 5, end: 8 }),
+    frameRate: 10,
+    repeat: -1
+  });
+  this.anims.create({
+    key: 'anim_face',
+    frames: [{ key: 'img_perso', frame: 4 }],
+    frameRate: 20
+  });
+
+  // 10 étoiles réparties tous les 70 pixels.
+  groupe_etoiles = this.physics.add.group();
+  for (let i = 0; i < 10; i++) {
+    groupe_etoiles.create(70 + 70 * i, 10, 'img_etoile');
+  }
+  this.physics.add.collider(groupe_etoiles, groupe_plateformes);
+
+  // children.iterate() applique un traitement à chaque membre du groupe.
+  groupe_etoiles.children.iterate(function (etoile_i) {
+    etoile_i.setBounceY(Phaser.Math.FloatBetween(0.4, 0.8));
+  });
+
+  // overlap = simple superposition (pas de rebond), collider = vraie collision.
+  this.physics.add.overlap(player, groupe_etoiles, ramasserEtoile, null, this);
+
+  zone_texte_score = this.add.text(16, 16, 'score : 0', {
+    fontSize: '32px',
+    fill: '#000'
+  });
+
+  groupe_bombes = this.physics.add.group();
+  this.physics.add.collider(groupe_bombes, groupe_plateformes);
+  this.physics.add.collider(player, groupe_bombes, chocAvecBombe, null, this);
+}
+
+function update() {
+  if (gameOver) {
+    return;
+  }
+
+  if (clavier.right.isDown) {
+    player.setVelocityX(160);
+    player.anims.play('anim_tourne_droite', true);
+  } else if (clavier.left.isDown) {
+    player.setVelocityX(-160);
+    player.anims.play('anim_tourne_gauche', true);
+  } else {
+    player.setVelocityX(0);
+    player.anims.play('anim_face', true);
+  }
+
+  // On ne peut sauter que si le joueur touche quelque chose sous lui.
+  if (clavier.up.isDown && player.body.touching.down) {
+    player.setVelocityY(-300);
+  }
+}
+
+function ramasserEtoile(un_player, une_etoile) {
+  // L'étoile devient invisible et perd son corps physique.
+  une_etoile.disableBody(true, true);
+
+  score += 10;
+  zone_texte_score.setText('Score : ' + score);
+
+  // Toutes les étoiles ramassées : on les réactive et on lâche une bombe.
+  if (groupe_etoiles.countActive(true) === 0) {
+    groupe_etoiles.children.iterate(function (etoile_i) {
+      etoile_i.enableBody(true, etoile_i.x, 0, true, true);
+    });
+
+    // La bombe apparaît à l'opposé du joueur.
+    let x;
+    if (player.x < 400) {
+      x = Phaser.Math.Between(400, 800);
+    } else {
+      x = Phaser.Math.Between(0, 400);
+    }
+
+    const une_bombe = groupe_bombes.create(x, 16, 'img_bombe');
+    une_bombe.setBounce(1);
+    une_bombe.setCollideWorldBounds(true);
+    une_bombe.setVelocity(Phaser.Math.Between(-200, 200), 20);
+    une_bombe.body.allowGravity = false;
+  }
+}
+
+function chocAvecBombe(un_player, une_bombe) {
+  this.physics.pause();
+  player.setTint(0xff0000);
+  player.anims.play('anim_face');
+  gameOver = true;
+  console.log('Game over — score final : ' + score);
+}
+
+new Phaser.Game(config);`,
+  },
+  {
+    id: "tuto-tiled",
+    group: "Tutoriels",
+    label: "T2 · Carte Tiled et caméra",
+    description:
+      "Charger une carte créée sous Tiled, gérer les collisions par propriété de tuile et faire suivre le joueur par la caméra.",
+    code: `/* Tutoriel : créer une carte sur Tiled et l'intégrer en Phaser 3.
+   La carte fait 1280 x 640 pixels : plus large que l'écran, donc la caméra
+   doit suivre le joueur. */
+
+const config = {
+  type: Phaser.AUTO,
+  width: 800,
+  height: 600,
+  scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
+  physics: {
+    default: 'arcade',
+    arcade: { gravity: { y: 300 }, debug: false }
+  },
+  scene: { preload: preload, create: create, update: update }
+};
+
+let player;
+let clavier;
+
+const LARGEUR_MONDE = 1280;
+const HAUTEUR_MONDE = 640;
+
+function preload() {
+  // L'image du jeu de tuiles...
+  this.load.image('tuiles_de_jeu', 'assets/tuilesJeu.png');
+  // ...et la carte exportée depuis Tiled au format JSON.
+  this.load.tilemapTiledJSON('carte', 'assets/map.json');
+
+  this.load.spritesheet('img_perso', 'assets/dude.png', {
+    frameWidth: 32,
+    frameHeight: 48
+  });
+}
+
+function create() {
+  const carteDuNiveau = this.add.tilemap('carte');
+
+  // 1er argument : le nom du tileset DANS Tiled.
+  // 2e argument : la clé de l'image chargée dans preload.
+  const tileset = carteDuNiveau.addTilesetImage('tuiles_de_jeu', 'tuiles_de_jeu');
+
+  // Les calques sont créés dans l'ordre de leur affichage.
+  carteDuNiveau.createLayer('calque_background', tileset);
+  const calque_plateformes = carteDuNiveau.createLayer('calque_plateformes', tileset);
+
+  // Dans Tiled, une propriété personnalisée "estSolide" a été posée sur les
+  // tuiles pleines : Phaser s'en sert pour savoir lesquelles bloquent.
+  calque_plateformes.setCollisionByProperty({ estSolide: true });
+
+  player = this.physics.add.sprite(100, 300, 'img_perso');
+  player.setBounce(0.2);
+  player.setCollideWorldBounds(true);
+  this.physics.add.collider(player, calque_plateformes);
+
+  this.anims.create({
+    key: 'anim_tourne_gauche',
+    frames: this.anims.generateFrameNumbers('img_perso', { start: 0, end: 3 }),
+    frameRate: 10,
+    repeat: -1
+  });
+  this.anims.create({
+    key: 'anim_tourne_droite',
+    frames: this.anims.generateFrameNumbers('img_perso', { start: 5, end: 8 }),
+    frameRate: 10,
+    repeat: -1
+  });
+  this.anims.create({
+    key: 'anim_face',
+    frames: [{ key: 'img_perso', frame: 4 }],
+    frameRate: 20
+  });
+
+  clavier = this.input.keyboard.createCursorKeys();
+
+  // Le monde physique et la caméra doivent adopter la taille de la carte.
+  this.physics.world.setBounds(0, 0, LARGEUR_MONDE, HAUTEUR_MONDE);
+  this.cameras.main.setBounds(0, 0, LARGEUR_MONDE, HAUTEUR_MONDE);
+  this.cameras.main.startFollow(player);
+
+  console.log('Carte chargée : ' + carteDuNiveau.width + ' x ' + carteDuNiveau.height + ' tuiles.');
+}
+
+function update() {
+  if (clavier.right.isDown) {
+    player.setVelocityX(160);
+    player.anims.play('anim_tourne_droite', true);
+  } else if (clavier.left.isDown) {
+    player.setVelocityX(-160);
+    player.anims.play('anim_tourne_gauche', true);
+  } else {
+    player.setVelocityX(0);
+    player.anims.play('anim_face', true);
+  }
+
+  // Sur une tilemap, on teste blocked.down plutôt que touching.down.
+  if (clavier.up.isDown && player.body.blocked.down) {
+    player.setVelocityY(-300);
+  }
+}
+
+new Phaser.Game(config);`,
+  },
+  {
+    id: "tuto-tir",
+    group: "Tutoriels",
+    label: "T3 · Tir, balles et cibles",
+    description:
+      "Tirer avec la touche A : groupe de projectiles, points de vie des cibles et destruction des balles sorties du monde.",
+    code: `/* Tutoriel : rajouter une fonction de tir, des balles et des cibles.
+   Flèches pour se déplacer, flèche haut pour sauter, touche A pour tirer. */
+
+const config = {
+  type: Phaser.AUTO,
+  width: 800,
+  height: 600,
+  scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
+  physics: {
+    default: 'arcade',
+    arcade: { gravity: { y: 300 }, debug: false }
+  },
+  scene: { preload: preload, create: create, update: update }
+};
+
+let groupe_plateformes;
+let player;
+let clavier;
+let boutonFeu;
+let groupeBullets;
+let groupeCibles;
+
+function preload() {
+  this.load.image('img_ciel', 'assets/sky.png');
+  this.load.image('img_plateforme', 'assets/platform.png');
+  this.load.image('img_balle', 'assets/balle.png');
+  this.load.image('img_cible', 'assets/cible.png');
+  this.load.spritesheet('img_perso', 'assets/dude.png', {
+    frameWidth: 32,
+    frameHeight: 48
+  });
+}
+
+function create() {
+  this.add.image(400, 300, 'img_ciel');
+
+  groupe_plateformes = this.physics.add.staticGroup();
+  groupe_plateformes.create(200, 584, 'img_plateforme');
+  groupe_plateformes.create(600, 584, 'img_plateforme');
+
+  // Création en masse : 8 cibles espacées de 107 pixels.
+  groupeCibles = this.physics.add.group({
+    key: 'img_cible',
+    repeat: 7,
+    setXY: { x: 24, y: 0, stepX: 107 }
+  });
+
+  // On personnalise chaque cible avec un attribut inventé : pointsVie.
+  groupeCibles.children.iterate(function (cibleTrouvee) {
+    cibleTrouvee.pointsVie = Phaser.Math.Between(1, 5);
+    cibleTrouvee.y = Phaser.Math.Between(10, 250);
+    cibleTrouvee.setBounce(1);
+  });
+  this.physics.add.collider(groupeCibles, groupe_plateformes);
+
+  player = this.physics.add.sprite(100, 450, 'img_perso');
+  player.setBounce(0.2);
+  player.setCollideWorldBounds(true);
+  this.physics.add.collider(player, groupe_plateformes);
+
+  // Attribut ajouté à la volée pour mémoriser le sens du tir.
+  player.direction = 'right';
+
+  this.anims.create({
+    key: 'anim_tourne_gauche',
+    frames: this.anims.generateFrameNumbers('img_perso', { start: 0, end: 3 }),
+    frameRate: 10,
+    repeat: -1
+  });
+  this.anims.create({
+    key: 'anim_tourne_droite',
+    frames: this.anims.generateFrameNumbers('img_perso', { start: 5, end: 8 }),
+    frameRate: 10,
+    repeat: -1
+  });
+  this.anims.create({
+    key: 'anim_face',
+    frames: [{ key: 'img_perso', frame: 4 }],
+    frameRate: 20
+  });
+
+  clavier = this.input.keyboard.createCursorKeys();
+  // addKey permet d'utiliser n'importe quelle touche.
+  boutonFeu = this.input.keyboard.addKey('A');
+
+  groupeBullets = this.physics.add.group();
+  this.physics.add.overlap(groupeBullets, groupeCibles, toucher, null, this);
+
+  // Une balle qui atteint le bord du monde doit être détruite, sinon elle
+  // resterait en mémoire indéfiniment.
+  this.physics.world.on('worldbounds', function (body) {
+    const objet = body.gameObject;
+    if (groupeBullets.contains(objet)) {
+      objet.destroy();
+    }
+  });
+
+  this.add.text(16, 16, 'A pour tirer', { fontSize: '24px', fill: '#000' });
+}
+
+function update() {
+  if (clavier.left.isDown) {
+    player.direction = 'left';
+    player.setVelocityX(-160);
+    player.anims.play('anim_tourne_gauche', true);
+  } else if (clavier.right.isDown) {
+    player.direction = 'right';
+    player.setVelocityX(160);
+    player.anims.play('anim_tourne_droite', true);
+  } else {
+    player.setVelocityX(0);
+    player.anims.play('anim_face', true);
+  }
+
+  if (clavier.up.isDown && player.body.touching.down) {
+    player.setVelocityY(-330);
+  }
+
+  // JustDown ne se déclenche qu'au moment de l'appui : une balle par pression.
+  if (Phaser.Input.Keyboard.JustDown(boutonFeu)) {
+    tirer(player);
+  }
+}
+
+function tirer(player) {
+  let coefDir;
+  if (player.direction === 'left') {
+    coefDir = -1;
+  } else {
+    coefDir = 1;
+  }
+
+  const bullet = groupeBullets.create(player.x + 25 * coefDir, player.y - 4, 'img_balle');
+  bullet.body.allowGravity = false;      // la balle vole droit
+  bullet.setCollideWorldBounds(true);
+  bullet.body.onWorldBounds = true;      // active l'événement "worldbounds"
+  bullet.setVelocity(1000 * coefDir, 0);
+}
+
+function toucher(bullet, cible) {
+  cible.pointsVie--;
+  if (cible.pointsVie === 0) {
+    cible.destroy();
+  }
+  bullet.destroy();
+}
+
+new Phaser.Game(config);`,
+  },
+  {
+    id: "tuto-niveaux",
+    group: "Tutoriels",
+    label: "T4 · Jeu multi-niveaux",
+    description:
+      "Plusieurs scènes déclarées en classes : trois portes mènent à trois niveaux. Espace devant une porte pour entrer.",
+    code: `/* Tutoriel : créer un jeu multi-niveaux.
+   L'article répartit le code en 5 fichiers avec des modules ES
+   (import / export). Le playground exécutant un seul bloc, les classes sont
+   ici simplement concaténées : on retire les "import" et les "export default",
+   le reste est identique.
+
+   Flèches pour se déplacer, espace devant une porte pour changer de niveau. */
+
+// Une scène peut aussi s'écrire comme une classe. La clé passée à super()
+// identifie la scène : c'est elle qu'on donne à this.scene.start().
+class Selection extends Phaser.Scene {
+  constructor() {
+    super({ key: 'selection' });
+  }
+
+  // Seule cette scène charge les assets : ils restent ensuite disponibles
+  // pour toutes les autres scènes du jeu.
+  preload() {
+    this.load.image('img_ciel', 'assets/sky.png');
+    this.load.image('img_plateforme', 'assets/platform.png');
+    this.load.image('img_porte1', 'assets/door1.png');
+    this.load.image('img_porte2', 'assets/door2.png');
+    this.load.image('img_porte3', 'assets/door3.png');
+    this.load.spritesheet('img_perso', 'assets/dude.png', {
+      frameWidth: 32,
+      frameHeight: 48
+    });
+  }
+
+  create() {
+    this.add.image(400, 300, 'img_ciel');
+
+    this.add.text(400, 60, 'Choisis une porte, puis appuie sur ESPACE', {
+      fontSize: '20px',
+      fill: '#000'
+    }).setOrigin(0.5);
+
+    this.groupe_plateformes = this.physics.add.staticGroup();
+    this.groupe_plateformes.create(200, 584, 'img_plateforme');
+    this.groupe_plateformes.create(600, 584, 'img_plateforme');
+    this.groupe_plateformes.create(120, 430, 'img_plateforme');
+    this.groupe_plateformes.create(650, 300, 'img_plateforme');
+
+    // Les animations sont globales au jeu : créées une fois ici, elles
+    // restent jouables dans les autres scènes.
+    this.anims.create({
+      key: 'anim_tourne_gauche',
+      frames: this.anims.generateFrameNumbers('img_perso', { start: 0, end: 3 }),
+      frameRate: 10,
+      repeat: -1
+    });
+    this.anims.create({
+      key: 'anim_tourne_droite',
+      frames: this.anims.generateFrameNumbers('img_perso', { start: 5, end: 8 }),
+      frameRate: 10,
+      repeat: -1
+    });
+    this.anims.create({
+      key: 'anim_face',
+      frames: [{ key: 'img_perso', frame: 4 }],
+      frameRate: 20
+    });
+
+    // Dans une classe, les variables deviennent des attributs : this.player.
+    this.player = this.physics.add.sprite(100, 450, 'img_perso');
+    this.player.setBounce(0.2);
+    this.player.setCollideWorldBounds(true);
+    this.physics.add.collider(this.player, this.groupe_plateformes);
+    this.clavier = this.input.keyboard.createCursorKeys();
+
+    // staticSprite : un décor immobile, insensible à la gravité.
+    this.porte1 = this.physics.add.staticSprite(300, 548, 'img_porte1');
+    this.porte2 = this.physics.add.staticSprite(120, 394, 'img_porte2');
+    this.porte3 = this.physics.add.staticSprite(650, 264, 'img_porte3');
+  }
+
+  update() {
+    deplacer(this.player, this.clavier);
+
+    if (Phaser.Input.Keyboard.JustDown(this.clavier.space)) {
+      if (this.physics.overlap(this.player, this.porte1)) this.scene.start('niveau1');
+      if (this.physics.overlap(this.player, this.porte2)) this.scene.start('niveau2');
+      if (this.physics.overlap(this.player, this.porte3)) this.scene.start('niveau3');
+    }
+  }
+}
+
+// Les trois niveaux ne diffèrent que par leur clé et leur texte : une seule
+// classe paramétrée évite de copier trois fois le même code.
+class Niveau extends Phaser.Scene {
+  constructor(cle, numero) {
+    super({ key: cle });
+    this.numero = numero;
+  }
+
+  // preload vide : les assets ont déjà été chargés par la scène "selection".
+  preload() {}
+
+  create() {
+    this.add.image(400, 300, 'img_ciel');
+
+    this.add.text(400, 100, 'Vous êtes dans le niveau ' + this.numero, {
+      fontFamily: 'Georgia, serif',
+      fontSize: '22pt',
+      fill: '#000'
+    }).setOrigin(0.5);
+
+    this.add.text(400, 160, 'ESPACE sur la porte pour revenir au choix', {
+      fontSize: '16px',
+      fill: '#000'
+    }).setOrigin(0.5);
+
+    this.groupe_plateformes = this.physics.add.staticGroup();
+    this.groupe_plateformes.create(200, 584, 'img_plateforme');
+    this.groupe_plateformes.create(600, 584, 'img_plateforme');
+
+    this.player = this.physics.add.sprite(400, 450, 'img_perso');
+    this.player.setBounce(0.2);
+    this.player.setCollideWorldBounds(true);
+    this.physics.add.collider(this.player, this.groupe_plateformes);
+    this.clavier = this.input.keyboard.createCursorKeys();
+
+    this.porte_retour = this.physics.add.staticSprite(100, 548, 'img_porte1');
+  }
+
+  update() {
+    deplacer(this.player, this.clavier);
+
+    if (Phaser.Input.Keyboard.JustDown(this.clavier.space)) {
+      if (this.physics.overlap(this.player, this.porte_retour)) {
+        this.scene.start('selection');
+      }
+    }
+  }
+}
+
+class Niveau1 extends Niveau {
+  constructor() { super('niveau1', 1); }
+}
+class Niveau2 extends Niveau {
+  constructor() { super('niveau2', 2); }
+}
+class Niveau3 extends Niveau {
+  constructor() { super('niveau3', 3); }
+}
+
+// Déplacement commun à toutes les scènes.
+function deplacer(player, clavier) {
+  if (clavier.left.isDown) {
+    player.setVelocityX(-160);
+    player.anims.play('anim_tourne_gauche', true);
+  } else if (clavier.right.isDown) {
+    player.setVelocityX(160);
+    player.anims.play('anim_tourne_droite', true);
+  } else {
+    player.setVelocityX(0);
+    player.anims.play('anim_face', true);
+  }
+
+  if (clavier.up.isDown && player.body.touching.down) {
+    player.setVelocityY(-330);
+  }
+}
+
+const config = {
+  type: Phaser.AUTO,
+  width: 800,
+  height: 600,
+  scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
+  physics: {
+    default: 'arcade',
+    arcade: { gravity: { y: 300 }, debug: false }
+  },
+  // La première scène du tableau démarre automatiquement.
+  scene: [Selection, Niveau1, Niveau2, Niveau3]
+};
+
+new Phaser.Game(config);`,
+  },
+  {
+    id: "tuto-multijoueurs",
+    group: "Tutoriels",
+    label: "T5 · Deuxième joueur (multi-joueurs)",
+    description:
+      "Deux personnages sur le même écran : le joueur 1 aux flèches, le joueur 2 en ZQSD.",
+    code: `/* Tutoriel : ajouter un personnage pour un jeu multi-joueurs.
+   Joueur 1 (bleu clair) : flèches. Joueur 2 (rose) : Z Q S D. */
+
+const config = {
+  type: Phaser.AUTO,
+  width: 800,
+  height: 600,
+  scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
+  physics: {
+    default: 'arcade',
+    arcade: { gravity: { y: 300 }, debug: false }
+  },
+  scene: { preload: preload, create: create, update: update }
+};
+
+let groupe_plateformes;
+let player;
+let player2;
+let clavier;
+// Le second joueur n'utilise pas les flèches : on déclare ses touches une à une.
+let J2Haut;
+let J2Gauche;
+let J2Droite;
+
+function preload() {
+  this.load.image('img_ciel', 'assets/sky.png');
+  this.load.image('img_plateforme', 'assets/platform.png');
+  this.load.spritesheet('img_perso', 'assets/dude.png', {
+    frameWidth: 32,
+    frameHeight: 48
+  });
+}
+
+function create() {
+  this.add.image(400, 300, 'img_ciel');
+
+  groupe_plateformes = this.physics.add.staticGroup();
+  groupe_plateformes.create(200, 584, 'img_plateforme');
+  groupe_plateformes.create(600, 584, 'img_plateforme');
+  groupe_plateformes.create(120, 400, 'img_plateforme');
+  groupe_plateformes.create(680, 400, 'img_plateforme');
+
+  this.anims.create({
+    key: 'anim_tourne_gauche',
+    frames: this.anims.generateFrameNumbers('img_perso', { start: 0, end: 3 }),
+    frameRate: 10,
+    repeat: -1
+  });
+  this.anims.create({
+    key: 'anim_tourne_droite',
+    frames: this.anims.generateFrameNumbers('img_perso', { start: 5, end: 8 }),
+    frameRate: 10,
+    repeat: -1
+  });
+  this.anims.create({
+    key: 'anim_face',
+    frames: [{ key: 'img_perso', frame: 4 }],
+    frameRate: 20
+  });
+
+  player = this.physics.add.sprite(150, 450, 'img_perso');
+  player.setBounce(0.2);
+  player.setCollideWorldBounds(true);
+  this.physics.add.collider(player, groupe_plateformes);
+
+  // Le second joueur réutilise le même spritesheet : une teinte suffit à
+  // les distinguer, inutile de charger une seconde image.
+  player2 = this.physics.add.sprite(650, 450, 'img_perso');
+  player2.setBounce(0.2);
+  player2.setCollideWorldBounds(true);
+  player2.setTint(0xff77aa);
+  this.physics.add.collider(player2, groupe_plateformes);
+
+  // Les deux joueurs se bousculent.
+  this.physics.add.collider(player, player2);
+
+  clavier = this.input.keyboard.createCursorKeys();
+  J2Haut = this.input.keyboard.addKey('Z');
+  J2Gauche = this.input.keyboard.addKey('Q');
+  J2Droite = this.input.keyboard.addKey('D');
+
+  this.add.text(16, 16, 'J1 : flèches     J2 : Z Q D', {
+    fontSize: '22px',
+    fill: '#000'
+  });
+}
+
+function update() {
+  // Joueur 1
+  if (clavier.left.isDown) {
+    player.setVelocityX(-160);
+    player.anims.play('anim_tourne_gauche', true);
+  } else if (clavier.right.isDown) {
+    player.setVelocityX(160);
+    player.anims.play('anim_tourne_droite', true);
+  } else {
+    player.setVelocityX(0);
+    player.anims.play('anim_face', true);
+  }
+  if (clavier.up.isDown && player.body.blocked.down) {
+    player.setVelocityY(-330);
+  }
+
+  // Joueur 2 : exactement la même logique, avec ses propres touches.
+  if (J2Gauche.isDown) {
+    player2.setVelocityX(-160);
+    player2.anims.play('anim_tourne_gauche', true);
+  } else if (J2Droite.isDown) {
+    player2.setVelocityX(160);
+    player2.anims.play('anim_tourne_droite', true);
+  } else {
+    player2.setVelocityX(0);
+    player2.anims.play('anim_face', true);
+  }
+  if (J2Haut.isDown && player2.body.blocked.down) {
+    player2.setVelocityY(-330);
+  }
+}
+
+new Phaser.Game(config);`,
+  },
+  {
+    id: "tuto-son",
+    group: "Tutoriels",
+    label: "T6 · Son : musique et bruitages",
+    description:
+      "Charger et jouer des sons. M coupe la musique, A déclenche un bruitage. Le navigateur exige un clic avant tout son.",
+    code: `/* Tutoriel : ajouter du son à un jeu (musique, bruitages).
+
+   Les navigateurs interdisent de démarrer un son tant que l'utilisateur n'a
+   pas interagi avec la page : la musique ne démarre donc qu'au premier clic
+   ou à la première touche. */
+
+const config = {
+  type: Phaser.AUTO,
+  width: 800,
+  height: 600,
+  scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
+  physics: {
+    default: 'arcade',
+    arcade: { gravity: { y: 300 }, debug: false }
+  },
+  scene: { preload: preload, create: create, update: update }
+};
+
+let groupe_plateformes;
+let player;
+let clavier;
+let boutonFeu;
+let boutonMusique;
+// Déclarées en dehors de create() pour rester accessibles dans update().
+let son_feu;
+let musique_de_fond;
+let zone_texte;
+
+function preload() {
+  this.load.image('img_ciel', 'assets/sky.png');
+  this.load.image('img_plateforme', 'assets/platform.png');
+  this.load.spritesheet('img_perso', 'assets/dude.png', {
+    frameWidth: 32,
+    frameHeight: 48
+  });
+
+  // load.audio(clé, fichier)
+  this.load.audio('coupDeFeu', 'assets/gun.mp3');
+  this.load.audio('background', 'assets/guile.mp3');
+}
+
+function create() {
+  this.add.image(400, 300, 'img_ciel');
+
+  groupe_plateformes = this.physics.add.staticGroup();
+  groupe_plateformes.create(200, 584, 'img_plateforme');
+  groupe_plateformes.create(600, 584, 'img_plateforme');
+
+  this.anims.create({
+    key: 'anim_tourne_gauche',
+    frames: this.anims.generateFrameNumbers('img_perso', { start: 0, end: 3 }),
+    frameRate: 10,
+    repeat: -1
+  });
+  this.anims.create({
+    key: 'anim_tourne_droite',
+    frames: this.anims.generateFrameNumbers('img_perso', { start: 5, end: 8 }),
+    frameRate: 10,
+    repeat: -1
+  });
+  this.anims.create({
+    key: 'anim_face',
+    frames: [{ key: 'img_perso', frame: 4 }],
+    frameRate: 20
+  });
+
+  player = this.physics.add.sprite(100, 450, 'img_perso');
+  player.setBounce(0.2);
+  player.setCollideWorldBounds(true);
+  this.physics.add.collider(player, groupe_plateformes);
+
+  clavier = this.input.keyboard.createCursorKeys();
+  boutonFeu = this.input.keyboard.addKey('A');
+  boutonMusique = this.input.keyboard.addKey('M');
+
+  // sound.add() enregistre le son et rend un objet manipulable.
+  son_feu = this.sound.add('coupDeFeu');
+  musique_de_fond = this.sound.add('background', { loop: true, volume: 0.4 });
+
+  zone_texte = this.add.text(16, 16, 'Clique dans le jeu pour lancer la musique', {
+    fontSize: '20px',
+    fill: '#000'
+  });
+
+  // Premier clic : on a le droit de jouer du son.
+  this.input.once('pointerdown', function () {
+    musique_de_fond.play();
+    zone_texte.setText('A : tirer     M : couper / relancer la musique');
+    console.log('Musique lancée.');
+  });
+}
+
+function update() {
+  if (clavier.left.isDown) {
+    player.setVelocityX(-160);
+    player.anims.play('anim_tourne_gauche', true);
+  } else if (clavier.right.isDown) {
+    player.setVelocityX(160);
+    player.anims.play('anim_tourne_droite', true);
+  } else {
+    player.setVelocityX(0);
+    player.anims.play('anim_face', true);
+  }
+
+  if (clavier.up.isDown && player.body.touching.down) {
+    player.setVelocityY(-330);
+  }
+
+  // play() accepte des options : volume, rate (vitesse), detune, loop...
+  if (Phaser.Input.Keyboard.JustDown(boutonFeu)) {
+    son_feu.play({ volume: 0.6 });
+  }
+
+  if (Phaser.Input.Keyboard.JustDown(boutonMusique)) {
+    if (musique_de_fond.isPlaying) {
+      musique_de_fond.stop();
+      console.log('Musique arrêtée.');
+    } else {
+      musique_de_fond.play();
+      console.log('Musique relancée.');
+    }
+  }
+}
+
+new Phaser.Game(config);`,
+  },
+  {
+    id: "tuto-menu",
+    group: "Tutoriels",
+    label: "T7 · Page d'accueil au clic",
+    description:
+      "Un menu d'accueil avec un bouton cliquable qui lance le niveau : setInteractive et événements pointerover / pointerout / pointerup.",
+    code: `/* Tutoriel : créer une page d'accueil ou un menu lancé avec un clic de souris.
+
+   Deux scènes : "menu" puis "niveau1". Attention, la clé passée à
+   this.scene.start() doit correspondre exactement à celle du super(). */
+
+class Menu extends Phaser.Scene {
+  constructor() {
+    super({ key: 'menu' });
+  }
+
+  preload() {
+    this.load.image('menu_fond', 'assets/sky.png');
+    this.load.image('img_plateforme', 'assets/platform.png');
+    this.load.spritesheet('img_perso', 'assets/dude.png', {
+      frameWidth: 32,
+      frameHeight: 48
+    });
+  }
+
+  create() {
+    // setOrigin(0) ancre l'image par son coin haut-gauche.
+    // setDepth fixe l'ordre d'affichage : 0 derrière, 1 devant.
+    this.add.image(0, 0, 'menu_fond').setOrigin(0).setDepth(0);
+
+    this.add.text(400, 180, 'MON JEU', {
+      fontFamily: 'Georgia, serif',
+      fontSize: '64px',
+      fill: '#000'
+    }).setOrigin(0.5).setDepth(1);
+
+    // Le bouton est dessiné plutôt qu'importé, mais le principe est le même
+    // qu'avec une image : un objet auquel on ajoute setInteractive().
+    const bouton_play = this.add.rectangle(400, 380, 260, 80, 0x1e3a5f).setDepth(1);
+    const libelle = this.add.text(400, 380, '▶ JOUER', {
+      fontSize: '32px',
+      fill: '#ffffff'
+    }).setOrigin(0.5).setDepth(2);
+
+    // Sans setInteractive(), l'objet ne reçoit aucun événement de souris.
+    bouton_play.setInteractive({ useHandCursor: true });
+
+    bouton_play.on('pointerover', () => {
+      bouton_play.setFillStyle(0x16a34a);
+      libelle.setScale(1.08);
+    });
+
+    bouton_play.on('pointerout', () => {
+      bouton_play.setFillStyle(0x1e3a5f);
+      libelle.setScale(1);
+    });
+
+    // pointerup : le clic est relâché sur le bouton, on lance le niveau.
+    bouton_play.on('pointerup', () => {
+      console.log('Lancement du niveau 1');
+      this.scene.start('niveau1');
+    });
+
+    this.add.text(400, 500, 'Clique sur le bouton', {
+      fontSize: '20px',
+      fill: '#000'
+    }).setOrigin(0.5).setDepth(1);
+  }
+}
+
+class Niveau1 extends Phaser.Scene {
+  constructor() {
+    super({ key: 'niveau1' });
+  }
+
+  preload() {}
+
+  create() {
+    this.add.image(400, 300, 'menu_fond');
+
+    this.add.text(400, 80, 'Niveau 1 — ESPACE pour revenir au menu', {
+      fontSize: '20px',
+      fill: '#000'
+    }).setOrigin(0.5);
+
+    this.groupe_plateformes = this.physics.add.staticGroup();
+    this.groupe_plateformes.create(200, 584, 'img_plateforme');
+    this.groupe_plateformes.create(600, 584, 'img_plateforme');
+
+    this.anims.create({
+      key: 'anim_tourne_gauche',
+      frames: this.anims.generateFrameNumbers('img_perso', { start: 0, end: 3 }),
+      frameRate: 10,
+      repeat: -1
+    });
+    this.anims.create({
+      key: 'anim_tourne_droite',
+      frames: this.anims.generateFrameNumbers('img_perso', { start: 5, end: 8 }),
+      frameRate: 10,
+      repeat: -1
+    });
+    this.anims.create({
+      key: 'anim_face',
+      frames: [{ key: 'img_perso', frame: 4 }],
+      frameRate: 20
+    });
+
+    this.player = this.physics.add.sprite(100, 450, 'img_perso');
+    this.player.setBounce(0.2);
+    this.player.setCollideWorldBounds(true);
+    this.physics.add.collider(this.player, this.groupe_plateformes);
+    this.clavier = this.input.keyboard.createCursorKeys();
+  }
+
+  update() {
+    if (this.clavier.left.isDown) {
+      this.player.setVelocityX(-160);
+      this.player.anims.play('anim_tourne_gauche', true);
+    } else if (this.clavier.right.isDown) {
+      this.player.setVelocityX(160);
+      this.player.anims.play('anim_tourne_droite', true);
+    } else {
+      this.player.setVelocityX(0);
+      this.player.anims.play('anim_face', true);
+    }
+
+    if (this.clavier.up.isDown && this.player.body.touching.down) {
+      this.player.setVelocityY(-330);
+    }
+
+    if (Phaser.Input.Keyboard.JustDown(this.clavier.space)) {
+      this.scene.start('menu');
+    }
+  }
+}
+
+const config = {
+  type: Phaser.AUTO,
+  width: 800,
+  height: 600,
+  scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
+  physics: {
+    default: 'arcade',
+    arcade: { gravity: { y: 300 }, debug: false }
+  },
+  scene: [Menu, Niveau1]
+};
+
+new Phaser.Game(config);`,
+  },
+  {
+    id: "tuto-trou",
+    group: "Tutoriels",
+    label: "T8 · Mourir en tombant dans un trou",
+    description:
+      "Détecter finement une collision avec les bornes du monde : le joueur ne meurt que s'il touche le bord du bas.",
+    code: `/* Tutoriel : comment faire mourir un sprite s'il tombe dans un trou, ou
+   comment détecter efficacement les collisions avec les bornes du monde.
+
+   Le sol est volontairement percé : tombe dans le trou pour déclencher la
+   fin de partie. R pour recommencer. */
+
+const config = {
+  type: Phaser.AUTO,
+  width: 800,
+  height: 600,
+  scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
+  physics: {
+    default: 'arcade',
+    arcade: { gravity: { y: 300 }, debug: false }
+  },
+  scene: { preload: preload, create: create, update: update }
+};
+
+let groupe_plateformes;
+let player;
+let clavier;
+let boutonRestart;
+let gameOver = false;
+
+function preload() {
+  this.load.image('img_ciel', 'assets/sky.png');
+  this.load.image('img_plateforme', 'assets/platform.png');
+  this.load.spritesheet('img_perso', 'assets/dude.png', {
+    frameWidth: 32,
+    frameHeight: 48
+  });
+}
+
+function create() {
+  gameOver = false;
+
+  this.add.image(400, 300, 'img_ciel');
+
+  groupe_plateformes = this.physics.add.staticGroup();
+  // Les deux plates-formes du sol sont écartées : il reste un trou au milieu.
+  groupe_plateformes.create(180, 584, 'img_plateforme');
+  groupe_plateformes.create(680, 584, 'img_plateforme');
+  groupe_plateformes.create(400, 400, 'img_plateforme');
+
+  this.anims.create({
+    key: 'anim_tourne_gauche',
+    frames: this.anims.generateFrameNumbers('img_perso', { start: 0, end: 3 }),
+    frameRate: 10,
+    repeat: -1
+  });
+  this.anims.create({
+    key: 'anim_tourne_droite',
+    frames: this.anims.generateFrameNumbers('img_perso', { start: 5, end: 8 }),
+    frameRate: 10,
+    repeat: -1
+  });
+  this.anims.create({
+    key: 'anim_face',
+    frames: [{ key: 'img_perso', frame: 4 }],
+    frameRate: 20
+  });
+
+  player = this.physics.add.sprite(100, 450, 'img_perso');
+  player.setBounce(0.2);
+  this.physics.add.collider(player, groupe_plateformes);
+
+  // 1. Le joueur se cogne aux bords du monde.
+  player.setCollideWorldBounds(true);
+  // 2. Sa hitbox émet un événement quand elle touche un bord.
+  player.body.onWorldBounds = true;
+
+  // 3. On écoute l'événement. Les booléens up/down/left/right indiquent QUEL
+  //    bord a été touché : ici on ne réagit qu'au bord du bas.
+  //    Le 3e argument (this) est indispensable : sans lui, this.physics
+  //    serait indéfini dans la fonction.
+  player.body.world.on(
+    'worldbounds',
+    function (body, up, down, left, right) {
+      if (body.gameObject === player && down === true) {
+        this.physics.pause();
+        player.setTint(0xff0000);
+        gameOver = true;
+        console.log('Tombé dans le trou — appuie sur R pour recommencer.');
+      }
+    },
+    this
+  );
+
+  clavier = this.input.keyboard.createCursorKeys();
+  boutonRestart = this.input.keyboard.addKey('R');
+
+  this.add.text(16, 16, 'Tombe dans le trou !     R : recommencer', {
+    fontSize: '20px',
+    fill: '#000'
+  });
+}
+
+function update() {
+  if (Phaser.Input.Keyboard.JustDown(boutonRestart)) {
+    this.scene.restart();
+    return;
+  }
+
+  if (gameOver) {
+    return;
+  }
+
+  if (clavier.left.isDown) {
+    player.setVelocityX(-160);
+    player.anims.play('anim_tourne_gauche', true);
+  } else if (clavier.right.isDown) {
+    player.setVelocityX(160);
+    player.anims.play('anim_tourne_droite', true);
+  } else {
+    player.setVelocityX(0);
+    player.anims.play('anim_face', true);
+  }
+
+  if (clavier.up.isDown && player.body.touching.down) {
+    player.setVelocityY(-330);
+  }
+}
+
+new Phaser.Game(config);`,
+  },
+  {
+    id: "tuto-porte",
+    group: "Tutoriels",
+    label: "T9 · Ouvrir une porte avec espace",
+    description:
+      "Interagir avec un décor : se placer devant la porte et appuyer sur espace. L'animation se joue à l'endroit puis à l'envers.",
+    code: `/* Tutoriel : ouvrir une porte en appuyant sur espace, ou comment interagir
+   avec un élément du jeu.
+
+   Flèches pour se déplacer, flèche haut pour sauter, ESPACE devant la porte
+   pour l'ouvrir ou la refermer. */
+
+const config = {
+  type: Phaser.AUTO,
+  width: 800,
+  height: 600,
+  scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
+  physics: {
+    default: 'arcade',
+    arcade: { gravity: { y: 300 }, debug: false }
+  },
+  scene: { preload: preload, create: create, update: update }
+};
+
+let groupe_plateformes;
+let player;
+let clavier;
+let porte;
+
+function preload() {
+  this.load.image('img_ciel', 'assets/sky.png');
+  this.load.image('img_plateforme', 'assets/platform.png');
+  this.load.spritesheet('img_perso', 'assets/dude.png', {
+    frameWidth: 32,
+    frameHeight: 48
+  });
+  // 6 images de 96 x 120 côte à côte : la porte du fermé à l'ouvert.
+  this.load.spritesheet('img_porte', 'assets/spritesheet_porte.png', {
+    frameWidth: 96,
+    frameHeight: 120
+  });
+}
+
+function create() {
+  this.add.image(400, 300, 'img_ciel');
+
+  groupe_plateformes = this.physics.add.staticGroup();
+  groupe_plateformes.create(200, 584, 'img_plateforme');
+  groupe_plateformes.create(600, 584, 'img_plateforme');
+
+  // staticSprite : la porte ne tombe pas et ne bouge pas.
+  porte = this.physics.add.staticSprite(550, 508, 'img_porte');
+  // Attribut inventé pour mémoriser l'état de la porte.
+  porte.ouverte = false;
+
+  // Deux animations sur le même spritesheet : la seconde le parcourt à
+  // l'envers (start plus grand que end) pour refermer la porte.
+  this.anims.create({
+    key: 'anim_ouvreporte',
+    frames: this.anims.generateFrameNumbers('img_porte', { start: 0, end: 5 }),
+    frameRate: 12,
+    repeat: 0
+  });
+  this.anims.create({
+    key: 'anim_fermeporte',
+    frames: this.anims.generateFrameNumbers('img_porte', { start: 5, end: 0 }),
+    frameRate: 12,
+    repeat: 0
+  });
+
+  this.anims.create({
+    key: 'anim_tourne_gauche',
+    frames: this.anims.generateFrameNumbers('img_perso', { start: 0, end: 3 }),
+    frameRate: 10,
+    repeat: -1
+  });
+  this.anims.create({
+    key: 'anim_tourne_droite',
+    frames: this.anims.generateFrameNumbers('img_perso', { start: 5, end: 8 }),
+    frameRate: 10,
+    repeat: -1
+  });
+  this.anims.create({
+    key: 'anim_face',
+    frames: [{ key: 'img_perso', frame: 4 }],
+    frameRate: 20
+  });
+
+  player = this.physics.add.sprite(100, 450, 'img_perso');
+  player.setBounce(0.2);
+  player.setCollideWorldBounds(true);
+  this.physics.add.collider(player, groupe_plateformes);
+
+  clavier = this.input.keyboard.createCursorKeys();
+
+  this.add.text(16, 16, 'Va sur la porte et appuie sur ESPACE', {
+    fontSize: '20px',
+    fill: '#000'
+  });
+}
+
+function update() {
+  if (clavier.left.isDown) {
+    player.setVelocityX(-160);
+    player.anims.play('anim_tourne_gauche', true);
+  } else if (clavier.right.isDown) {
+    player.setVelocityX(160);
+    player.anims.play('anim_tourne_droite', true);
+  } else {
+    player.setVelocityX(0);
+    player.anims.play('anim_face', true);
+  }
+
+  if (clavier.up.isDown && player.body.touching.down) {
+    player.setVelocityY(-330);
+  }
+
+  // Deux conditions : la touche vient d'être pressée (JustDown, et non
+  // isDown qui serait vrai à chaque frame), et le joueur touche la porte.
+  if (Phaser.Input.Keyboard.JustDown(clavier.space) &&
+      this.physics.overlap(player, porte)) {
+    if (porte.ouverte === false) {
+      porte.anims.play('anim_ouvreporte');
+      porte.ouverte = true;
+      console.log('Porte ouverte');
+    } else {
+      porte.anims.play('anim_fermeporte');
+      porte.ouverte = false;
+      console.log('Porte fermée');
+    }
+  }
+}
+
+new Phaser.Game(config);`,
+  },
+  {
+    id: "tuto-timers",
+    group: "Tutoriels",
+    label: "T10 · Timers et délais",
+    description:
+      "Programmer des actions dans le temps : message qui s'efface, étoile qui réapparaît en boucle, et tir avec temps de recharge.",
+    code: `/* Tutoriel : utiliser des timers pour programmer et répéter des actions,
+   ou instaurer des délais.
+
+   L'article ne donne que des extraits de syntaxe ; cet exemple les met en
+   scène dans trois situations concrètes. A pour tirer (rechargement de 2 s). */
+
+const config = {
+  type: Phaser.AUTO,
+  width: 800,
+  height: 600,
+  scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
+  physics: {
+    default: 'arcade',
+    arcade: { gravity: { y: 300 }, debug: false }
+  },
+  scene: { preload: preload, create: create, update: update }
+};
+
+let groupe_plateformes;
+let player;
+let clavier;
+let boutonFeu;
+let etoile;
+let zone_texte_etat;
+
+function preload() {
+  this.load.image('img_ciel', 'assets/sky.png');
+  this.load.image('img_plateforme', 'assets/platform.png');
+  this.load.image('img_etoile', 'assets/star.png');
+  this.load.spritesheet('img_perso', 'assets/dude.png', {
+    frameWidth: 32,
+    frameHeight: 48
+  });
+}
+
+function create() {
+  this.add.image(400, 300, 'img_ciel');
+
+  groupe_plateformes = this.physics.add.staticGroup();
+  groupe_plateformes.create(200, 584, 'img_plateforme');
+  groupe_plateformes.create(600, 584, 'img_plateforme');
+
+  this.anims.create({
+    key: 'anim_tourne_gauche',
+    frames: this.anims.generateFrameNumbers('img_perso', { start: 0, end: 3 }),
+    frameRate: 10,
+    repeat: -1
+  });
+  this.anims.create({
+    key: 'anim_tourne_droite',
+    frames: this.anims.generateFrameNumbers('img_perso', { start: 5, end: 8 }),
+    frameRate: 10,
+    repeat: -1
+  });
+  this.anims.create({
+    key: 'anim_face',
+    frames: [{ key: 'img_perso', frame: 4 }],
+    frameRate: 20
+  });
+
+  player = this.physics.add.sprite(100, 450, 'img_perso');
+  player.setBounce(0.2);
+  player.setCollideWorldBounds(true);
+  this.physics.add.collider(player, groupe_plateformes);
+  player.peutTirer = true;
+
+  clavier = this.input.keyboard.createCursorKeys();
+  boutonFeu = this.input.keyboard.addKey('A');
+
+  zone_texte_etat = this.add.text(16, 50, 'A : tirer', {
+    fontSize: '22px',
+    fill: '#000'
+  });
+
+  /* 1. delayedCall : une seule exécution, après un délai.
+        Ici un message de bienvenue qui s'efface au bout de 3 secondes. */
+  const message = this.add.text(400, 150, 'Ce message disparaît dans 3 s...', {
+    fontSize: '24px',
+    fill: '#000'
+  }).setOrigin(0.5);
+
+  this.time.delayedCall(3000, function () {
+    message.destroy();
+    console.log('Message effacé par delayedCall.');
+  }, null, this);
+
+  /* 2. addEvent avec repeat: -1 : exécution répétée à l'infini.
+        Une étoile réapparaît à une position aléatoire toutes les 2 s. */
+  etoile = this.physics.add.sprite(400, 100, 'img_etoile');
+  etoile.setBounceY(0.6);
+  this.physics.add.collider(etoile, groupe_plateformes);
+
+  this.time.addEvent({
+    delay: 2000,
+    callback: function () {
+      etoile.setPosition(Phaser.Math.Between(50, 750), 50);
+      etoile.setVelocity(0, 0);
+    },
+    args: [],
+    callbackScope: this,
+    repeat: -1
+  });
+
+  console.log('Timers programmés.');
+}
+
+function update() {
+  if (clavier.left.isDown) {
+    player.setVelocityX(-160);
+    player.anims.play('anim_tourne_gauche', true);
+  } else if (clavier.right.isDown) {
+    player.setVelocityX(160);
+    player.anims.play('anim_tourne_droite', true);
+  } else {
+    player.setVelocityX(0);
+    player.anims.play('anim_face', true);
+  }
+
+  if (clavier.up.isDown && player.body.touching.down) {
+    player.setVelocityY(-330);
+  }
+
+  /* 3. Le motif du "temps de recharge" : un attribut booléen désactivé au
+        tir, puis réactivé par un delayedCall. */
+  if (Phaser.Input.Keyboard.JustDown(boutonFeu)) {
+    tirer.call(this, player);
+  }
+}
+
+function tirer(player) {
+  if (player.peutTirer === false) {
+    return;
+  }
+
+  const balle = this.add.circle(player.x, player.y - 4, 6, 0xff0000);
+  this.tweens.add({
+    targets: balle,
+    x: 800,
+    duration: 600,
+    onComplete: function () { balle.destroy(); }
+  });
+
+  player.peutTirer = false;
+  zone_texte_etat.setText('Rechargement...');
+
+  // Réarmement dans 2 secondes.
+  this.time.delayedCall(2000, function () {
+    player.peutTirer = true;
+    zone_texte_etat.setText('A : tirer');
+  }, null, this);
+}
+
+new Phaser.Game(config);`,
+  },
+  {
+    id: "tuto-levier",
+    group: "Tutoriels",
+    label: "T11 · Plate-forme mobile et levier",
+    description:
+      "Un tween mis en pause à la création, puis démarré et arrêté par un levier actionné à la barre espace.",
+    code: `/* Tutoriel : utiliser les tweens pour activer une plate-forme mobile via
+   un levier.
+
+   Va sur le levier (à droite) et appuie sur ESPACE : la plate-forme bleue se
+   met en mouvement. Monte dessus pour atteindre le haut. */
+
+const config = {
+  type: Phaser.AUTO,
+  width: 800,
+  height: 600,
+  scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
+  physics: {
+    default: 'arcade',
+    arcade: { gravity: { y: 300 }, debug: false }
+  },
+  scene: { preload: preload, create: create, update: update }
+};
+
+let groupe_plateformes;
+let player;
+let clavier;
+let plateforme_mobile;
+let tween_mouvement;
+let levier;
+
+function preload() {
+  this.load.image('img_ciel', 'assets/sky.png');
+  this.load.image('img_plateforme', 'assets/platform.png');
+  this.load.spritesheet('img_perso', 'assets/dude.png', {
+    frameWidth: 32,
+    frameHeight: 48
+  });
+}
+
+function create() {
+  this.add.image(400, 300, 'img_ciel');
+
+  // Textures fabriquées à la volée : le tutoriel fournit deux images, on les
+  // dessine ici pour que l'exemple reste autonome.
+  const g = this.make.graphics({ add: false });
+  g.fillStyle(0x29adff, 1);
+  g.fillRect(0, 0, 150, 24);
+  g.generateTexture('img_plateforme_mobile', 150, 24);
+  g.clear();
+  g.fillStyle(0x8b4513, 1);
+  g.fillRect(24, 20, 12, 40);
+  g.fillStyle(0xff004d, 1);
+  g.fillCircle(30, 16, 14);
+  g.generateTexture('img_levier', 60, 60);
+  g.destroy();
+
+  groupe_plateformes = this.physics.add.staticGroup();
+  groupe_plateformes.create(200, 584, 'img_plateforme');
+  groupe_plateformes.create(600, 584, 'img_plateforme');
+  groupe_plateformes.create(180, 200, 'img_plateforme');
+
+  // Un sprite dynamique, pas un staticSprite : la hitbox d'un corps statique
+  // ne suivrait pas le déplacement de l'image.
+  plateforme_mobile = this.physics.add.sprite(400, 500, 'img_plateforme_mobile');
+  plateforme_mobile.body.allowGravity = false;  // elle ne tombe pas
+  plateforme_mobile.body.immovable = true;      // le joueur ne la pousse pas
+
+  // paused: true — le tween est créé mais ne démarre pas tout de suite.
+  tween_mouvement = this.tweens.add({
+    targets: [plateforme_mobile],
+    paused: true,
+    ease: 'Linear',
+    duration: 2000,
+    yoyo: true,            // rembobine le déplacement une fois arrivé
+    y: '-=300',            // valeur relative : 300 px plus haut
+    delay: 0,
+    hold: 1000,            // temps d'attente en haut
+    repeatDelay: 1000,     // temps d'attente en bas
+    repeat: -1
+  });
+
+  levier = this.physics.add.staticSprite(700, 538, 'img_levier');
+  // On évite le nom "active", déjà utilisé en interne par Phaser.
+  levier.actif = false;
+
+  this.anims.create({
+    key: 'anim_tourne_gauche',
+    frames: this.anims.generateFrameNumbers('img_perso', { start: 0, end: 3 }),
+    frameRate: 10,
+    repeat: -1
+  });
+  this.anims.create({
+    key: 'anim_tourne_droite',
+    frames: this.anims.generateFrameNumbers('img_perso', { start: 5, end: 8 }),
+    frameRate: 10,
+    repeat: -1
+  });
+  this.anims.create({
+    key: 'anim_face',
+    frames: [{ key: 'img_perso', frame: 4 }],
+    frameRate: 20
+  });
+
+  player = this.physics.add.sprite(100, 450, 'img_perso');
+  player.setBounce(0.2);
+  player.setCollideWorldBounds(true);
+  this.physics.add.collider(player, groupe_plateformes);
+  // Sans ce collider, le joueur traverserait la plate-forme mobile.
+  this.physics.add.collider(player, plateforme_mobile);
+
+  clavier = this.input.keyboard.createCursorKeys();
+
+  this.add.text(16, 16, 'ESPACE sur le levier pour lancer la plate-forme', {
+    fontSize: '20px',
+    fill: '#000'
+  });
+}
+
+function update() {
+  if (clavier.left.isDown) {
+    player.setVelocityX(-160);
+    player.anims.play('anim_tourne_gauche', true);
+  } else if (clavier.right.isDown) {
+    player.setVelocityX(160);
+    player.anims.play('anim_tourne_droite', true);
+  } else {
+    player.setVelocityX(0);
+    player.anims.play('anim_face', true);
+  }
+
+  if (clavier.up.isDown && player.body.touching.down) {
+    player.setVelocityY(-330);
+  }
+
+  if (Phaser.Input.Keyboard.JustDown(clavier.space) &&
+      this.physics.overlap(player, levier)) {
+    if (levier.actif === true) {
+      levier.actif = false;
+      levier.flipX = false;
+      tween_mouvement.pause();
+      console.log('Levier désactivé');
+    } else {
+      levier.actif = true;
+      levier.flipX = true;
+      tween_mouvement.resume();
+      console.log('Levier activé');
+    }
   }
 }
 
