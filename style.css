@@ -1249,3 +1249,109 @@ footer {
   #student-label { display: none; }
   .header-btn { font-size: 12px; padding: 5px 8px; }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   MODULE PHASER (ccphaser.html)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* ── Colonne d'aperçu ────────────────────────────────────────────────────── */
+.preview-pane {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: 8px;
+  min-height: 0;
+}
+
+.example-description {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: #4b5563;
+}
+
+.game-stage {
+  background: #11162a;
+  border: 1px solid #e0e0d8;
+  border-radius: 8px;
+  overflow: hidden;
+  min-height: 0;
+}
+
+#gameFrame {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: none;
+}
+
+.game-hint {
+  margin: 0;
+  font-size: 12px;
+  color: #6b7280;
+}
+
+#exampleSelect {
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: #1e3a5f;
+  background: #fff;
+  border: 1.5px solid #d1d5db;
+  border-radius: 8px;
+  padding: 8px 10px;
+  cursor: pointer;
+  max-width: 260px;
+}
+#exampleSelect:hover { border-color: #1e3a5f; }
+
+/* ── Console du module ───────────────────────────────────────────────────── */
+.phaser-console {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+  padding: 10px;
+  background: #f8f9fa;
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+}
+
+.phaser-console .console-line {
+  font-size: 14px;
+  margin: 0 0 4px;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  color: #1a1a1a;
+}
+
+.phaser-console .console-error { color: #b91c1c; }
+.phaser-console .console-warn { color: #b45309; }
+
+.phaser-console .console-placeholder {
+  color: #9ca3af;
+  font-style: italic;
+  font-size: 13px;
+  font-family: system-ui, sans-serif;
+}
+
+/* ── Bouton "Réinitialiser" ──────────────────────────────────────────────── */
+#resetButton {
+  background: #fff;
+  color: #374151;
+  border: 1.5px solid #d1d5db;
+  font-size: 1.05em;
+  padding: 12px 24px;
+  flex: 0 0 auto;
+}
+#resetButton:hover { background: #f3f4f6; }
+
+@media (max-width: 900px) {
+  #exampleSelect { max-width: 100%; }
+}

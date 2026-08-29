@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Code Coach Phaser</title>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.1/codemirror.min.css"
+    />
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <header>
+      <div class="header-inner">
+        <span class="site-title">Code Coach Phaser</span>
+        <div class="header-actions">
+          <a href="./index.html" class="header-back">← Accueil</a>
+        </div>
+      </div>
+    </header>
+
+    <!-- LIGNE 1 : ÉDITEUR (50%) | APERÇU DU JEU (50%) -->
+
+    <div class="container top-row">
+      <!-- Zone Éditeur -->
+      <div class="code-area editor">
+        <h3>Éditeur Phaser :</h3>
+        <textarea id="editor"></textarea>
+        <div class="console-panel">
+          <div class="console-bar">
+            <span class="console-title">Console</span>
+            <div class="console-actions">
+              <button id="clearConsoleButton" title="Effacer la console">🗑 Effacer</button>
+            </div>
+          </div>
+          <div id="consoleOutput" class="phaser-console"></div>
+        </div>
+        <div class="buttons-row">
+          <button id="runButton" title="Ctrl + Entrée">▶ Lancer le jeu <kbd>Ctrl+↵</kbd></button>
+          <button id="resetButton" class="secondary-btn" title="Revenir au code d'origine de l'exemple">
+            ↺ Réinitialiser
+          </button>
+        </div>
+      </div>
+
+      <!-- Zone Aperçu -->
+      <div class="code-area statement">
+        <div class="exercises-top-bar">
+          <h3>Aperçu du jeu :</h3>
+          <div class="header-buttons">
+            <label for="exampleSelect" class="visually-hidden">Choisir un exemple</label>
+            <select id="exampleSelect" title="Charger un exemple Phaser"></select>
+          </div>
+        </div>
+        <div class="preview-pane">
+          <p id="exampleDescription" class="example-description"></p>
+          <div class="game-stage">
+            <iframe id="gameFrame" title="Aperçu du jeu Phaser"></iframe>
+          </div>
+          <p class="game-hint">
+            🎮 Les exemples au clavier nécessitent de <strong>cliquer dans la zone de jeu</strong>
+            pour lui donner le focus.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <footer>
+      <p>
+        © 2025 - BUT MMI Béziers - MAURIN N.<br />
+        R1.12 Développement Web
+      </p>
+    </footer>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.1/codemirror.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.1/mode/javascript/javascript.min.js"></script>
+
+    <script src="./phaser-examples.js"></script>
+    <script src="./phaser-playground.js"></script>
+  </body>
+</html>
