@@ -19,16 +19,26 @@ function consoleEl() {
   return document.getElementById("consoleOutput");
 }
 
+// Erreurs de la dernière exécution : l'assistant s'en sert comme indice.
+let dernieresErreurs = [];
+
 function clearConsole() {
   const out = consoleEl();
   out.innerHTML =
     '<div class="console-placeholder">Les messages de console.log() et les erreurs s\'afficheront ici.</div>';
+  dernieresErreurs = [];
 }
 
 function appendConsole(type, message) {
   const out = consoleEl();
   const placeholder = out.querySelector(".console-placeholder");
   if (placeholder) placeholder.remove();
+
+  // Une erreur dans update() se répète à chaque frame : on ne la retient
+  // qu'une fois, sinon la liste grossirait sans fin.
+  if (type === "error" && !dernieresErreurs.includes(message)) {
+    dernieresErreurs.push(message);
+  }
 
   const line = document.createElement("pre");
   line.className = "console-line console-" + type;
@@ -193,6 +203,16 @@ function codeSolution(code) {
   }).join("\n");
 }
 
+/** La liste des consignes de l'exercice, sans la solution : c'est ce que
+    l'assistant reçoit comme énoncé. */
+function consignes(code) {
+  return code.split("\n").reduce((liste, ligne) => {
+    const debut = ligne.match(MARQUEUR_DEBUT);
+    if (debut) liste.push(debut[2]);
+    return liste;
+  }, []);
+}
+
 /* ── Pop-up « résultat attendu » ─────────────────────────────────────────── */
 
 function openSolution() {
@@ -213,6 +233,95 @@ function closeSolution() {
   document.getElementById("solutionFrame").src = "about:blank";
 }
 
+/* ── Assistant pédagogique ───────────────────────────────────────────────── */
+
+/* Trois niveaux d'aide, comme dans les modules JS et PHP : l'étudiant monte
+   d'un cran s'il reste bloqué. La solution n'est jamais envoyée au modèle —
+   il ne connaît que les consignes et le code écrit par l'étudiant. */
+
+const NIVEAUX_AIDE = {
+  1: `Donne UN SEUL indice léger, en 2-3 phrases maximum, sous forme de piste de
+réflexion ou de question qui oriente l'étudiant. Ne montre JAMAIS de code,
+ne désigne pas la ligne exacte du problème. Si le code est déjà correct,
+félicite-le simplement.`,
+  2: `Indique précisément OÙ se situe le problème (quelle partie du code, quel
+trou à compléter) et quelle notion Phaser est mal utilisée, en 3-5 phrases.
+Ne donne pas la correction, pas de code corrigé. Si le code est déjà correct,
+félicite-le.`,
+  3: `Explique la démarche complète étape par étape pour compléter l'exercice, et
+donne la structure attendue (pseudo-code, ou nom des méthodes Phaser à appeler
+et dans quel ordre), mais JAMAIS la solution finale copiable telle quelle.
+Si le code est déjà correct, félicite-le.`,
+};
+
+const ATTENTE_AIDE = {
+  1: "Préparation d'un petit indice... 💡",
+  2: "Analyse de ton code en cours... 🔍",
+  3: "Préparation d'une aide détaillée... 🛟",
+};
+
+function assistantEl() {
+  return document.getElementById("assistantContent");
+}
+
+function openAssistant() {
+  document.getElementById("assistantModal").style.display = "block";
+  assistantEl().innerHTML = `<p>
+    Je suis là pour t'aider sur cet exercice. Choisis un niveau d'aide ci-dessus :
+    commence par l'indice léger 💡, et monte d'un cran si tu restes bloqué.
+  </p>`;
+}
+
+function closeAssistant() {
+  document.getElementById("assistantModal").style.display = "none";
+}
+
+async function askAssistant(niveau) {
+  document.getElementById("assistantModal").style.display = "block";
+  assistantEl().innerHTML =
+    `<p style="color:#1e3a5f;text-align:center;margin-top:50px;">${ATTENTE_AIDE[niveau]}</p>`;
+
+  const systemPrompt = `
+Tu es un expert de Phaser 3 (version 3.80).
+Tu dois aider un étudiant de BUT MMI qui apprend à créer un jeu vidéo.
+Tu ne dois jamais donner la correction complète de l'exercice.
+Tu dois t'exprimer en français, avec un ton encourageant, et le tutoyer.
+Niveau d'aide demandé par l'étudiant :
+${NIVEAUX_AIDE[niveau]}
+`;
+
+  // Les passages à écrire sont signalés dans l'éditeur par des commentaires
+  // « À COMPLETER » : le modèle doit savoir que ce sont eux, le travail demandé.
+  const listeConsignes = consignes(currentExample.code)
+    .map((texte, i) => `${i + 1}. ${texte}`)
+    .join("\n");
+
+  const erreurs = dernieresErreurs.length
+    ? `\nErreurs relevées lors de la dernière exécution :\n${dernieresErreurs.join("\n")}\n`
+    : "";
+
+  const userQuery = `
+Exercice : ${currentExample.label}
+${currentExample.description}
+
+Les passages que l'étudiant doit écrire lui-même sont signalés dans son code par
+des commentaires « /* À COMPLETER : ... */ ». Voici ce qui lui est demandé :
+${listeConsignes}
+
+Voici le code actuel de l'étudiant :
+\`\`\`javascript
+${cmEditor.getValue()}
+\`\`\`
+${erreurs}`;
+
+  try {
+    assistantEl().innerHTML = formatMarkdown(await callClaude(systemPrompt, userQuery));
+  } catch (error) {
+    assistantEl().innerHTML =
+      `<p style="color:#dc2626;">Erreur d'analyse (${error.message})</p>`;
+  }
+}
+
 /* ── Exemples ────────────────────────────────────────────────────────────── */
 
 function loadExample(id) {
@@ -223,8 +332,12 @@ function loadExample(id) {
   document.getElementById("exampleDescription").textContent = example.description;
 
   const depart = codeDepart(example.code);
-  // Sans trou à combler, montrer le résultat attendu n'apporterait rien.
-  document.getElementById("solutionButton").hidden = depart === example.code;
+  // Sans trou à combler, il n'y a ni résultat à dévoiler ni aide à demander :
+  // les exemples de base restent de simples démonstrations.
+  const estExercice = depart !== example.code;
+  document.getElementById("solutionButton").hidden = !estExercice;
+  document.getElementById("assistantButton").hidden = !estExercice;
+  closeAssistant();
 
   cmEditor.setValue(depart);
   runCode();
@@ -276,8 +389,20 @@ document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("solutionModal").addEventListener("click", (event) => {
     if (event.target.id === "solutionModal") closeSolution();
   });
+
+  document.getElementById("assistantButton").addEventListener("click", openAssistant);
+  document.getElementById("closeAssistantButton").addEventListener("click", closeAssistant);
+  document.getElementById("assistantModal").addEventListener("click", (event) => {
+    if (event.target.id === "assistantModal") closeAssistant();
+  });
+  document.querySelectorAll(".hint-btn").forEach((bouton) => {
+    bouton.addEventListener("click", () => askAssistant(Number(bouton.dataset.level)));
+  });
+
   document.addEventListener("keydown", (event) => {
-    if (event.key === "Escape") closeSolution();
+    if (event.key !== "Escape") return;
+    closeSolution();
+    closeAssistant();
   });
 
   loadExample(PHASER_EXAMPLES[0].id);
