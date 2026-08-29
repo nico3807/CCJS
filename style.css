@@ -1314,6 +1314,16 @@ footer {
 #exampleSelect:hover { border-color: #1e3a5f; }
 
 /* ── Console du module ───────────────────────────────────────────────────── */
+
+/* Ici le résultat du code, c'est le jeu affiché à droite : la console ne sert
+   qu'aux erreurs et aux console.log(). Elle garde donc le tiers de la hauteur
+   qu'elle occupe dans les modules JS et PHP, où elle est la sortie principale,
+   et l'éditeur récupère la place libérée.
+   Rapport éditeur/console : 1.7 / 1 ailleurs, 7.1 / 1 ici. */
+.module-phaser .code-area.editor {
+  grid-template-rows: auto minmax(0, 7.1fr) minmax(0, 1fr) auto;
+}
+
 .phaser-console {
   flex: 1;
   overflow-y: auto;
@@ -1354,6 +1364,12 @@ footer {
 
 @media (max-width: 900px) {
   #exampleSelect { max-width: 100%; }
+
+  /* Même arbitrage qu'en grand écran, mais la console garde un plancher en
+     pixels : en dessous, un message d'erreur ne tiendrait plus. */
+  .module-phaser .code-area.editor {
+    grid-template-rows: auto minmax(300px, 58vh) minmax(90px, 8vh) auto;
+  }
 }
 
 /* ── Pop-up « résultat attendu » ─────────────────────────────────────────── */
