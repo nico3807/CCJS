@@ -336,7 +336,7 @@ function loadExample(id) {
   // les exemples de base restent de simples démonstrations.
   const estExercice = depart !== example.code;
   document.getElementById("solutionButton").hidden = !estExercice;
-  document.getElementById("assistantButton").hidden = !estExercice;
+  document.getElementById("aideIaButton").hidden = !estExercice;
   closeAssistant();
 
   cmEditor.setValue(depart);
@@ -390,7 +390,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (event.target.id === "solutionModal") closeSolution();
   });
 
-  document.getElementById("assistantButton").addEventListener("click", openAssistant);
+  document.getElementById("aideIaButton").addEventListener("click", openAssistant);
   document.getElementById("closeAssistantButton").addEventListener("click", closeAssistant);
   document.getElementById("assistantModal").addEventListener("click", (event) => {
     if (event.target.id === "assistantModal") closeAssistant();
