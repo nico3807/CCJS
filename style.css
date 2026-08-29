@@ -16,6 +16,11 @@ html, body {
 
 a { text-decoration: none; color: inherit; }
 
+/* La règle par défaut du navigateur ([hidden] { display: none }) a une
+   spécificité nulle : le moindre sélecteur d'id la bat et l'attribut hidden
+   cesse de cacher quoi que ce soit. On la réaffirme ici pour tout le site. */
+[hidden] { display: none !important; }
+
 /* ── Header ──────────────────────────────────────────────────────────────── */
 header {
   background: #1e3a5f;
@@ -1316,12 +1321,14 @@ footer {
 /* ── Console du module ───────────────────────────────────────────────────── */
 
 /* Ici le résultat du code, c'est le jeu affiché à droite : la console ne sert
-   qu'aux erreurs et aux console.log(). Elle garde donc le tiers de la hauteur
-   qu'elle occupe dans les modules JS et PHP, où elle est la sortie principale,
-   et l'éditeur récupère la place libérée.
-   Rapport éditeur/console : 1.7 / 1 ailleurs, 7.1 / 1 ici. */
+   qu'aux erreurs et aux console.log(). Elle est donc bien plus basse que dans
+   les modules JS et PHP, où elle est la sortie principale, et l'éditeur
+   récupère la place libérée.
+   Rapport éditeur/console : 1.7 / 1 ailleurs, 4 / 1 ici — la barre de titre de
+   la console faisant 34 px fixes, descendre plus bas ne laisserait qu'une
+   ligne de texte lisible. */
 .module-phaser .code-area.editor {
-  grid-template-rows: auto minmax(0, 7.1fr) minmax(0, 1fr) auto;
+  grid-template-rows: auto minmax(0, 4fr) minmax(0, 1fr) auto;
 }
 
 .phaser-console {
@@ -1368,7 +1375,7 @@ footer {
   /* Même arbitrage qu'en grand écran, mais la console garde un plancher en
      pixels : en dessous, un message d'erreur ne tiendrait plus. */
   .module-phaser .code-area.editor {
-    grid-template-rows: auto minmax(300px, 58vh) minmax(90px, 8vh) auto;
+    grid-template-rows: auto minmax(280px, 53vh) minmax(110px, 13vh) auto;
   }
 }
 
