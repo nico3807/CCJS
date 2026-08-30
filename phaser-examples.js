@@ -3,8 +3,10 @@
    Deux familles :
    - "Découverte" : notions isolées, textures générées avec Graphics, aucun
      fichier externe.
-   - "Tutoriels" : les exemples des tutoriels de darties.fr, qui chargent les
-     assets depuis phaser/assets/.
+   - "Tutoriels" : T1 à T11 reprennent les tutoriels de darties.fr ; T12 à T14
+     sont inédits et prolongent la série sur des notions que les articles ne
+     couvrent pas (état du jeu, persistance, ennemi autonome). Tous chargent
+     leurs assets depuis phaser/assets/.
 
    Les articles sont écrits en « delta » (ils ne donnent que les lignes à
    ajouter à un projet de base) et laissent des passages à compléter. Les
@@ -2036,6 +2038,606 @@ function update() {
   }
   // @fin
 }
+
+new Phaser.Game(config);`,
+  },
+  {
+    id: "tuto-vie",
+    group: "Tutoriels",
+    label: "T12 · Barre de vie et dégâts",
+    description:
+      "Donner des points de vie au joueur au lieu de le tuer au premier contact : une donnée, son affichage en barre, et une fenêtre d'invulnérabilité.",
+    code: `/* Tutoriel : donner des points de vie au joueur et les afficher dans une
+   barre, plutôt que de le tuer dès le premier contact.
+
+   Flèches pour se déplacer, flèche haut pour sauter. Chaque bombe touchée
+   coûte 20 points de vie ; le joueur clignote alors et devient invulnérable
+   une seconde et demie. R pour recommencer.
+
+   L'idée à retenir : la donnée (pointsDeVie) et son affichage (la barre) sont
+   deux choses distinctes. On modifie la donnée, puis on redessine. */
+
+const config = {
+  type: Phaser.AUTO,
+  width: 800,
+  height: 600,
+  scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
+  physics: {
+    default: 'arcade',
+    arcade: { gravity: { y: 300 }, debug: false }
+  },
+  scene: { preload: preload, create: create, update: update }
+};
+
+let groupe_plateformes;
+let player;
+let clavier;
+let boutonRestart;
+let groupe_bombes;
+
+// La donnée : ce que vaut la vie du joueur.
+let pointsDeVie = 100;
+// Le dessin : l'objet Graphics qui la représente à l'écran.
+let barre_vie;
+// Pendant l'invulnérabilité, les bombes ne font plus de dégâts.
+let invincible = false;
+let gameOver = false;
+
+function preload() {
+  this.load.image('img_ciel', 'assets/sky.png');
+  this.load.image('img_plateforme', 'assets/platform.png');
+  this.load.image('img_bombe', 'assets/bomb.png');
+  this.load.spritesheet('img_perso', 'assets/dude.png', {
+    frameWidth: 32,
+    frameHeight: 48
+  });
+}
+
+function create() {
+  // create() est rejoué à chaque scene.restart() : on remet tout à zéro ici,
+  // sinon la partie suivante reprendrait la vie de la précédente.
+  pointsDeVie = 100;
+  invincible = false;
+  gameOver = false;
+
+  this.add.image(400, 300, 'img_ciel');
+
+  groupe_plateformes = this.physics.add.staticGroup();
+  groupe_plateformes.create(400, 584, 'img_plateforme').setScale(2).refreshBody();
+  groupe_plateformes.create(600, 400, 'img_plateforme');
+  groupe_plateformes.create(50, 250, 'img_plateforme');
+  groupe_plateformes.create(750, 220, 'img_plateforme');
+
+  this.anims.create({
+    key: 'anim_tourne_gauche',
+    frames: this.anims.generateFrameNumbers('img_perso', { start: 0, end: 3 }),
+    frameRate: 10,
+    repeat: -1
+  });
+  this.anims.create({
+    key: 'anim_tourne_droite',
+    frames: this.anims.generateFrameNumbers('img_perso', { start: 5, end: 8 }),
+    frameRate: 10,
+    repeat: -1
+  });
+  this.anims.create({
+    key: 'anim_face',
+    frames: [{ key: 'img_perso', frame: 4 }],
+    frameRate: 20
+  });
+
+  player = this.physics.add.sprite(100, 450, 'img_perso');
+  player.setBounce(0.2);
+  player.setCollideWorldBounds(true);
+  this.physics.add.collider(player, groupe_plateformes);
+
+  // Trois bombes qui rebondissent sans fin : la source des dégâts.
+  groupe_bombes = this.physics.add.group();
+  for (let i = 0; i < 3; i++) {
+    const une_bombe = groupe_bombes.create(200 + 200 * i, 16, 'img_bombe');
+    une_bombe.setBounce(1);
+    une_bombe.setCollideWorldBounds(true);
+    une_bombe.setVelocity(Phaser.Math.Between(-200, 200), 20);
+    une_bombe.body.allowGravity = false;
+  }
+  this.physics.add.collider(groupe_bombes, groupe_plateformes);
+
+  // @trou Créer la barre de vie avec add.graphics(), la fixer à l'écran avec setScrollFactor(0), puis appeler dessinerBarreVie() pour l'afficher une première fois
+  barre_vie = this.add.graphics();
+  // setScrollFactor(0) : la barre reste collée à l'écran même si la caméra
+  // se déplace. C'est ce qui distingue un élément d'interface du décor.
+  barre_vie.setScrollFactor(0);
+  dessinerBarreVie();
+  // @fin
+
+  // @trou Appeler perdreVie() quand le joueur touche une bombe : overlap et non collider, pour qu'il ne rebondisse pas dessus
+  this.physics.add.overlap(player, groupe_bombes, perdreVie, null, this);
+  // @fin
+
+  clavier = this.input.keyboard.createCursorKeys();
+  boutonRestart = this.input.keyboard.addKey('R');
+
+  this.add.text(16, 52, 'Evite les bombes !     R : recommencer', {
+    fontSize: '18px',
+    fill: '#000'
+  });
+}
+
+// @trou Écrire dessinerBarreVie() : effacer le tracé précédent, dessiner un fond rouge de 200 px de large, puis par-dessus un rectangle vert dont la largeur vaut 2 fois pointsDeVie
+function dessinerBarreVie() {
+  // clear() efface le tracé précédent. Sans lui, les rectangles
+  // s'empileraient les uns sur les autres à chaque redessin.
+  barre_vie.clear();
+
+  // Le fond, toujours à sa largeur maximale : c'est la vie manquante.
+  barre_vie.fillStyle(0xaa0000, 1);
+  barre_vie.fillRect(16, 16, 200, 24);
+
+  // La partie pleine : 100 points de vie pour 200 px, donc 2 px par point.
+  barre_vie.fillStyle(0x00cc00, 1);
+  barre_vie.fillRect(16, 16, pointsDeVie * 2, 24);
+}
+// @fin
+
+// @trou Écrire perdreVie() : ne rien faire si le joueur est déjà invincible ; sinon lui retirer 20 points de vie et redessiner la barre, terminer la partie si la vie tombe à zéro, et sinon le rendre invincible 1500 ms en le faisant clignoter
+function perdreVie(un_player, une_bombe) {
+  // Sans ce garde-fou, l'overlap se déclencherait à chaque frame de contact
+  // et la vie tomberait à zéro en une fraction de seconde.
+  if (invincible === true) {
+    return;
+  }
+
+  pointsDeVie -= 20;
+  dessinerBarreVie();
+
+  if (pointsDeVie <= 0) {
+    this.physics.pause();
+    player.setTint(0xff0000);
+    player.anims.play('anim_face');
+    gameOver = true;
+    console.log('Game over — appuie sur R pour recommencer.');
+    return;
+  }
+
+  // Fenêtre d'invulnérabilité. Le clignotement la rend visible au joueur :
+  // sans lui, il ne comprendrait pas pourquoi les bombes ne font plus rien.
+  invincible = true;
+  this.tweens.add({
+    targets: player,
+    alpha: 0.2,
+    duration: 120,
+    yoyo: true,
+    repeat: 5
+  });
+  this.time.delayedCall(1500, function () {
+    invincible = false;
+    player.setAlpha(1);
+  });
+}
+// @fin
+
+function update() {
+  if (Phaser.Input.Keyboard.JustDown(boutonRestart)) {
+    this.scene.restart();
+    return;
+  }
+
+  if (gameOver) {
+    return;
+  }
+
+  if (clavier.left.isDown) {
+    player.setVelocityX(-160);
+    player.anims.play('anim_tourne_gauche', true);
+  } else if (clavier.right.isDown) {
+    player.setVelocityX(160);
+    player.anims.play('anim_tourne_droite', true);
+  } else {
+    player.setVelocityX(0);
+    player.anims.play('anim_face', true);
+  }
+
+  if (clavier.up.isDown && player.body.touching.down) {
+    player.setVelocityY(-330);
+  }
+}
+
+new Phaser.Game(config);`,
+  },
+  {
+    id: "tuto-record",
+    group: "Tutoriels",
+    label: "T13 · Meilleur score sauvegardé",
+    description:
+      "Retenir le record d'une partie à l'autre avec localStorage : lire, convertir, comparer, enregistrer. Le score survit au rechargement de la page.",
+    code: `/* Tutoriel : retenir le meilleur score d'une partie à l'autre avec
+   localStorage.
+
+   Ramasse les étoiles ; la bombe qui rebondit met fin à la partie. Le record
+   est enregistré dans le navigateur : il survit au rechargement de la page,
+   et même à la fermeture du navigateur. R pour rejouer, E pour effacer le
+   record.
+
+   Le piège à connaître : localStorage ne stocke que du TEXTE. getItem()
+   renvoie donc une chaîne, ou null si la clé n'existe pas encore. Sans
+   conversion, la comparaison porterait sur des chaînes et '9' > '10'
+   serait vrai. */
+
+const config = {
+  type: Phaser.AUTO,
+  width: 800,
+  height: 600,
+  scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
+  physics: {
+    default: 'arcade',
+    arcade: { gravity: { y: 300 }, debug: false }
+  },
+  scene: { preload: preload, create: create, update: update }
+};
+
+// La clé sous laquelle le record est rangé. Le navigateur garde les données
+// de tous les sites au même endroit : un nom précis évite les collisions.
+const CLE_RECORD = 'ccjs.phaser.record';
+
+let groupe_plateformes;
+let player;
+let clavier;
+let groupe_etoiles;
+let groupe_bombes;
+let zone_texte_score;
+let zone_texte_record;
+let boutonRestart;
+let boutonEffacer;
+let score = 0;
+let record = 0;
+let gameOver = false;
+
+function preload() {
+  this.load.image('img_ciel', 'assets/sky.png');
+  this.load.image('img_plateforme', 'assets/platform.png');
+  this.load.image('img_etoile', 'assets/star.png');
+  this.load.image('img_bombe', 'assets/bomb.png');
+  this.load.spritesheet('img_perso', 'assets/dude.png', {
+    frameWidth: 32,
+    frameHeight: 48
+  });
+}
+
+function create() {
+  score = 0;
+  gameOver = false;
+
+  // @trou Lire le record enregistré : getItem() renvoie une chaîne ou null, il faut donc le convertir en nombre et retomber sur 0 quand rien n'a encore été enregistré
+  // Number(null) vaut 0, mais Number('abc') vaut NaN : le || 0 couvre les
+  // deux cas d'un coup, y compris une valeur abîmée à la main.
+  record = Number(localStorage.getItem(CLE_RECORD)) || 0;
+  // @fin
+
+  this.add.image(400, 300, 'img_ciel');
+
+  groupe_plateformes = this.physics.add.staticGroup();
+  groupe_plateformes.create(400, 584, 'img_plateforme').setScale(2).refreshBody();
+  groupe_plateformes.create(600, 400, 'img_plateforme');
+  groupe_plateformes.create(50, 250, 'img_plateforme');
+  groupe_plateformes.create(750, 220, 'img_plateforme');
+
+  this.anims.create({
+    key: 'anim_tourne_gauche',
+    frames: this.anims.generateFrameNumbers('img_perso', { start: 0, end: 3 }),
+    frameRate: 10,
+    repeat: -1
+  });
+  this.anims.create({
+    key: 'anim_tourne_droite',
+    frames: this.anims.generateFrameNumbers('img_perso', { start: 5, end: 8 }),
+    frameRate: 10,
+    repeat: -1
+  });
+  this.anims.create({
+    key: 'anim_face',
+    frames: [{ key: 'img_perso', frame: 4 }],
+    frameRate: 20
+  });
+
+  player = this.physics.add.sprite(100, 450, 'img_perso');
+  player.setBounce(0.2);
+  player.setCollideWorldBounds(true);
+  this.physics.add.collider(player, groupe_plateformes);
+
+  groupe_etoiles = this.physics.add.group();
+  for (let i = 0; i < 10; i++) {
+    groupe_etoiles.create(70 + 70 * i, 10, 'img_etoile');
+  }
+  this.physics.add.collider(groupe_etoiles, groupe_plateformes);
+  groupe_etoiles.children.iterate(function (etoile_i) {
+    etoile_i.setBounceY(Phaser.Math.FloatBetween(0.4, 0.8));
+  });
+  this.physics.add.overlap(player, groupe_etoiles, ramasserEtoile, null, this);
+
+  // Une bombe dès le départ : la partie peut se terminer à tout moment,
+  // donc le record se joue sur ce qu'on a eu le temps de ramasser.
+  groupe_bombes = this.physics.add.group();
+  const une_bombe = groupe_bombes.create(400, 16, 'img_bombe');
+  une_bombe.setBounce(1);
+  une_bombe.setCollideWorldBounds(true);
+  une_bombe.setVelocity(Phaser.Math.Between(-200, 200), 20);
+  une_bombe.body.allowGravity = false;
+  this.physics.add.collider(groupe_bombes, groupe_plateformes);
+  this.physics.add.collider(player, groupe_bombes, chocAvecBombe, null, this);
+
+  zone_texte_score = this.add.text(16, 16, 'Score : 0', {
+    fontSize: '28px',
+    fill: '#000'
+  });
+
+  // @trou Afficher le record juste sous le score, sous la forme 'Record : ' suivi de sa valeur
+  zone_texte_record = this.add.text(16, 52, 'Record : ' + record, {
+    fontSize: '24px',
+    fill: '#004400'
+  });
+  // @fin
+
+  clavier = this.input.keyboard.createCursorKeys();
+  boutonRestart = this.input.keyboard.addKey('R');
+  boutonEffacer = this.input.keyboard.addKey('E');
+
+  this.add.text(16, 84, 'R : rejouer     E : effacer le record', {
+    fontSize: '16px',
+    fill: '#000'
+  });
+}
+
+function update() {
+  if (Phaser.Input.Keyboard.JustDown(boutonRestart)) {
+    this.scene.restart();
+    return;
+  }
+
+  // @trou Sur la touche E, supprimer la clé du localStorage avec removeItem(), remettre record à 0 et rafraîchir le texte affiché
+  if (Phaser.Input.Keyboard.JustDown(boutonEffacer)) {
+    // removeItem() supprime la clé. Mettre une chaîne vide ne suffirait pas :
+    // la clé existerait toujours, avec une valeur vide.
+    localStorage.removeItem(CLE_RECORD);
+    record = 0;
+    zone_texte_record.setText('Record : 0');
+    console.log('Record effacé.');
+  }
+  // @fin
+
+  if (gameOver) {
+    return;
+  }
+
+  if (clavier.left.isDown) {
+    player.setVelocityX(-160);
+    player.anims.play('anim_tourne_gauche', true);
+  } else if (clavier.right.isDown) {
+    player.setVelocityX(160);
+    player.anims.play('anim_tourne_droite', true);
+  } else {
+    player.setVelocityX(0);
+    player.anims.play('anim_face', true);
+  }
+
+  if (clavier.up.isDown && player.body.touching.down) {
+    player.setVelocityY(-330);
+  }
+}
+
+function ramasserEtoile(un_player, une_etoile) {
+  une_etoile.disableBody(true, true);
+  score += 10;
+  zone_texte_score.setText('Score : ' + score);
+
+  // Toutes les étoiles ramassées : on les remet en jeu pour continuer à
+  // faire monter le score.
+  if (groupe_etoiles.countActive(true) === 0) {
+    groupe_etoiles.children.iterate(function (etoile_i) {
+      etoile_i.enableBody(true, etoile_i.x, 0, true, true);
+    });
+  }
+}
+
+function chocAvecBombe(un_player, une_bombe) {
+  this.physics.pause();
+  player.setTint(0xff0000);
+  player.anims.play('anim_face');
+  gameOver = true;
+
+  // @trou Comparer le score au record : s'il est meilleur, l'enregistrer avec setItem() en le convertissant en texte, mettre record à jour et rafraîchir l'affichage
+  if (score > record) {
+    record = score;
+    // setItem() ne stocke que du texte. String() rend la conversion
+    // explicite au lieu de la laisser faire en douce par le navigateur.
+    localStorage.setItem(CLE_RECORD, String(record));
+    zone_texte_record.setText('Record : ' + record + ' (nouveau !)');
+    console.log('Nouveau record : ' + record);
+  } else {
+    console.log('Score : ' + score + ' — record inchangé (' + record + ').');
+  }
+  // @fin
+}
+
+new Phaser.Game(config);`,
+  },
+  {
+    id: "tuto-ennemi",
+    group: "Tutoriels",
+    label: "T14 · Ennemi qui patrouille",
+    description:
+      "Un ennemi qui fait ses allers-retours tout seul et qu'on élimine en lui sautant dessus : demi-tour sur body.blocked, et règle du qui-tue-qui au contact.",
+    code: `/* Tutoriel : un ennemi qui patrouille tout seul, et qu'on élimine en lui
+   sautant dessus.
+
+   Flèches pour se déplacer, flèche haut pour sauter. L'ennemi rouge fait des
+   allers-retours : le toucher par le côté est fatal, mais lui retomber dessus
+   l'élimine et rapporte 50 points. R pour recommencer.
+
+   Tout se joue dans la fonction de contact : c'est la position du joueur par
+   rapport à l'ennemi, au moment du choc, qui décide lequel des deux meurt. */
+
+const config = {
+  type: Phaser.AUTO,
+  width: 800,
+  height: 600,
+  scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
+  physics: {
+    default: 'arcade',
+    arcade: { gravity: { y: 300 }, debug: false }
+  },
+  scene: { preload: preload, create: create, update: update }
+};
+
+let groupe_plateformes;
+let player;
+let clavier;
+let boutonRestart;
+let ennemi;
+let zone_texte_score;
+let score = 0;
+let gameOver = false;
+
+// Vitesse de patrouille, dans les deux sens : on la range dans une constante
+// pour ne pas répéter le nombre à chaque demi-tour.
+const VITESSE_ENNEMI = 100;
+
+function preload() {
+  this.load.image('img_ciel', 'assets/sky.png');
+  this.load.image('img_plateforme', 'assets/platform.png');
+  this.load.spritesheet('img_perso', 'assets/dude.png', {
+    frameWidth: 32,
+    frameHeight: 48
+  });
+}
+
+function create() {
+  score = 0;
+  gameOver = false;
+
+  this.add.image(400, 300, 'img_ciel');
+
+  groupe_plateformes = this.physics.add.staticGroup();
+  groupe_plateformes.create(400, 584, 'img_plateforme').setScale(2).refreshBody();
+  groupe_plateformes.create(120, 380, 'img_plateforme');
+  groupe_plateformes.create(680, 380, 'img_plateforme');
+
+  this.anims.create({
+    key: 'anim_tourne_gauche',
+    frames: this.anims.generateFrameNumbers('img_perso', { start: 0, end: 3 }),
+    frameRate: 10,
+    repeat: -1
+  });
+  this.anims.create({
+    key: 'anim_tourne_droite',
+    frames: this.anims.generateFrameNumbers('img_perso', { start: 5, end: 8 }),
+    frameRate: 10,
+    repeat: -1
+  });
+  this.anims.create({
+    key: 'anim_face',
+    frames: [{ key: 'img_perso', frame: 4 }],
+    frameRate: 20
+  });
+
+  player = this.physics.add.sprite(100, 450, 'img_perso');
+  player.setBounce(0.2);
+  player.setCollideWorldBounds(true);
+  this.physics.add.collider(player, groupe_plateformes);
+
+  // @trou Créer l'ennemi : un sprite 'img_perso' teinté en rouge, posé vers x = 650, qui se cogne aux bords du monde, entre en collision avec les plates-formes, et démarre vers la droite à VITESSE_ENNEMI
+  ennemi = this.physics.add.sprite(650, 450, 'img_perso');
+  ennemi.setTint(0xff5555);
+  // Il rebondit sur les bords de l'écran : c'est ce qui borne sa patrouille.
+  ennemi.setCollideWorldBounds(true);
+  this.physics.add.collider(ennemi, groupe_plateformes);
+  ennemi.setVelocityX(VITESSE_ENNEMI);
+  ennemi.anims.play('anim_tourne_droite', true);
+  // @fin
+
+  // @trou Appeler toucherEnnemi() quand le joueur et l'ennemi se superposent : overlap, car un collider les ferait rebondir avant qu'on ait pu décider quoi que ce soit
+  this.physics.add.overlap(player, ennemi, toucherEnnemi, null, this);
+  // @fin
+
+  clavier = this.input.keyboard.createCursorKeys();
+  boutonRestart = this.input.keyboard.addKey('R');
+
+  zone_texte_score = this.add.text(16, 16, 'Score : 0', {
+    fontSize: '28px',
+    fill: '#000'
+  });
+  this.add.text(16, 52, 'Saute sur l ennemi !     R : recommencer', {
+    fontSize: '16px',
+    fill: '#000'
+  });
+}
+
+function update() {
+  if (Phaser.Input.Keyboard.JustDown(boutonRestart)) {
+    this.scene.restart();
+    return;
+  }
+
+  if (gameOver) {
+    return;
+  }
+
+  // @trou Faire faire demi-tour à l'ennemi : s'il est bloqué à droite, le renvoyer vers la gauche, et inversement, en changeant aussi son animation. Ne rien faire s'il a été éliminé
+  // body.blocked.right est vrai quand la hitbox bute contre quelque chose à
+  // sa droite : ici, le bord du monde. À ne pas confondre avec touching,
+  // qui parle des contacts entre deux corps mobiles.
+  if (ennemi.active === true) {
+    if (ennemi.body.blocked.right) {
+      ennemi.setVelocityX(-VITESSE_ENNEMI);
+      ennemi.anims.play('anim_tourne_gauche', true);
+    } else if (ennemi.body.blocked.left) {
+      ennemi.setVelocityX(VITESSE_ENNEMI);
+      ennemi.anims.play('anim_tourne_droite', true);
+    }
+  }
+  // @fin
+
+  if (clavier.left.isDown) {
+    player.setVelocityX(-160);
+    player.anims.play('anim_tourne_gauche', true);
+  } else if (clavier.right.isDown) {
+    player.setVelocityX(160);
+    player.anims.play('anim_tourne_droite', true);
+  } else {
+    player.setVelocityX(0);
+    player.anims.play('anim_face', true);
+  }
+
+  if (clavier.up.isDown && player.body.touching.down) {
+    player.setVelocityY(-330);
+  }
+}
+
+// @trou Écrire toucherEnnemi() : si le joueur retombe sur l'ennemi (il descend ET son centre est au-dessus de celui de l'ennemi), éliminer l'ennemi avec disableBody(), faire rebondir le joueur et marquer 50 points ; dans tous les autres cas, c'est le joueur qui meurt
+function toucherEnnemi(un_player, un_ennemi) {
+  // Deux conditions, et il faut les deux réunies :
+  // - le joueur descend (velocity.y > 0), donc il ne remonte pas dans
+  //   l'ennemi par en dessous ;
+  // - il est encore nettement au-dessus de lui au moment du choc.
+  const tombeDessus =
+    un_player.body.velocity.y > 0 && un_player.y < un_ennemi.y - 16;
+
+  if (tombeDessus) {
+    // disableBody(true, true) : corps physique désactivé, sprite masqué.
+    un_ennemi.disableBody(true, true);
+    // Petit rebond : la récompense se voit tout de suite.
+    un_player.setVelocityY(-200);
+    score += 50;
+    zone_texte_score.setText('Score : ' + score);
+    console.log('Ennemi éliminé !');
+  } else {
+    this.physics.pause();
+    un_player.setTint(0xff0000);
+    un_player.anims.play('anim_face');
+    gameOver = true;
+    console.log('Touché par le côté — appuie sur R pour recommencer.');
+  }
+}
+// @fin
 
 new Phaser.Game(config);`,
   },
