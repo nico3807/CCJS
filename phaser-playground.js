@@ -108,6 +108,41 @@ function buildGameDocument(userCode, channel) {
       window.addEventListener('unhandledrejection', function (e) {
         send('error', [e.reason && e.reason.message ? e.reason.message : e.reason]);
       });
+
+      /* Les deux aperçus (éditeur et « résultat attendu ») sont servis depuis
+         des URL blob, qui héritent de l'origine de la page : ils partagent donc
+         le même localStorage. Sans cloisonnement, une partie jouée dans la
+         solution laisserait son record dans l'exercice de l'étudiant.
+
+         On préfixe donc les clés par le nom de la fenêtre. Le code du jeu
+         continue d'écrire localStorage.getItem('mon.record') : le préfixe est
+         invisible pour lui, et la notion reste juste à enseigner. */
+      (function () {
+        var prefixe = 'ccjs:' + ${JSON.stringify(channel)} + ':';
+        var reel = window.localStorage;
+        var cloison = {
+          getItem: function (cle) { return reel.getItem(prefixe + cle); },
+          setItem: function (cle, valeur) { return reel.setItem(prefixe + cle, valeur); },
+          removeItem: function (cle) { return reel.removeItem(prefixe + cle); },
+          key: function (i) {
+            var cles = Object.keys(reel).filter(function (k) { return k.indexOf(prefixe) === 0; });
+            return i < cles.length ? cles[i].slice(prefixe.length) : null;
+          },
+          clear: function () {
+            Object.keys(reel).forEach(function (k) {
+              if (k.indexOf(prefixe) === 0) reel.removeItem(k);
+            });
+          }
+        };
+        Object.defineProperty(cloison, 'length', {
+          get: function () {
+            return Object.keys(reel).filter(function (k) { return k.indexOf(prefixe) === 0; }).length;
+          }
+        });
+        try {
+          Object.defineProperty(window, 'localStorage', { value: cloison, configurable: true });
+        } catch (e) { /* si le navigateur refuse, on garde le stockage partagé */ }
+      })();
       if (!window.Phaser) {
         send('error', ['Phaser n\\'a pas pu être chargé. Vérifie ta connexion internet.']);
       }

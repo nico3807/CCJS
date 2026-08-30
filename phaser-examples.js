@@ -886,6 +886,10 @@ class Selection extends Phaser.Scene {
     this.player.setBounce(0.2);
     this.player.setCollideWorldBounds(true);
     this.physics.add.collider(this.player, this.groupe_plateformes);
+    // À profondeur égale, Phaser dessine dans l'ordre de création : les portes,
+    // créées juste après, passeraient devant le joueur. setDepth le remet
+    // au premier plan, quel que soit l'ordre du code.
+    this.player.setDepth(1);
     this.clavier = this.input.keyboard.createCursorKeys();
 
     // @trou Poser les 3 portes en staticSprite : porte1 (300/548), porte2 (120/394) et porte3 (650/264)
@@ -942,6 +946,9 @@ class Niveau extends Phaser.Scene {
     this.player.setBounce(0.2);
     this.player.setCollideWorldBounds(true);
     this.physics.add.collider(this.player, this.groupe_plateformes);
+    // Même raison que dans la scène de sélection : la porte de retour est
+    // créée après le joueur, il faut donc le placer devant explicitement.
+    this.player.setDepth(1);
     this.clavier = this.input.keyboard.createCursorKeys();
 
     // @trou Poser la porte de retour en (100, 548)
