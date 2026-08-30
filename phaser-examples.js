@@ -1952,9 +1952,26 @@ function create() {
   // Un sprite dynamique, pas un staticSprite : la hitbox d'un corps statique
   // ne suivrait pas le déplacement de l'image.
   plateforme_mobile = this.physics.add.sprite(400, 500, 'img_plateforme_mobile');
-  // @trou Empêcher la plate-forme mobile de tomber (allowGravity) et de se faire pousser par le joueur (immovable)
+  // @trou Empêcher la plate-forme mobile de tomber (allowGravity) et de se faire pousser par le joueur (immovable), puis activer setDirectControl pour qu'Arcade voie le déplacement du tween
   plateforme_mobile.body.allowGravity = false;  // elle ne tombe pas
   plateforme_mobile.body.immovable = true;      // le joueur ne la pousse pas
+
+  /* La ligne suivante est la moins évidente des trois, et sans elle
+     l'exemple ne marche pas.
+
+     Arcade décide de quel côté repousser deux corps qui se chevauchent en
+     comparant leurs déplacements de l'image précédente, que body.deltaY()
+     lui donne. Or depuis Phaser 3.60 deltaY() ne renvoie que le
+     déplacement calculé à partir de la VITESSE du corps. Notre plate-forme
+     n'a pas de vitesse : c'est le tween qui réécrit sa position. Arcade la
+     croit donc immobile, se trompe de côté, et à la montée elle traverse
+     le joueur au lieu de le soulever ; à la descente elle le laisse
+     flotter en l'air au lieu de l'emmener.
+
+     setDirectControl(true) dit à Arcade de déduire la vitesse du corps de
+     son changement de position. C'est ce qu'il faut dès qu'on déplace un
+     corps « à la main » — par un tween, ou en écrivant x/y directement. */
+  plateforme_mobile.body.setDirectControl(true);
   // @fin
 
   // @trou Créer le tween qui monte la plate-forme de 300 px en 2 s, en yoyo et en boucle infinie, mais en pause au départ (paused: true)
