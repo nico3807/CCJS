@@ -491,6 +491,40 @@ function fillExampleSelect() {
   select.addEventListener("change", () => loadExample(select.value));
 }
 
+/* ── Collage désactivé ───────────────────────────────────────────────────── */
+
+/* On tape son code, on ne le colle pas : recopier une correction sans la
+   lire n'apprend rien.
+
+   On intercepte le changement plutôt que la touche Ctrl-V, parce qu'un
+   collage arrive aussi par le menu contextuel, par le menu Édition du
+   navigateur ou par le clic du milieu sous Linux. CodeMirror étiquette tous
+   ces chemins d'un même « origin » valant "paste", ce qui donne un seul
+   point de contrôle. Les chargements d'exemple et le bouton « réinitialiser »
+   passent, eux, par setValue() : ils ont un autre origin et ne sont pas
+   touchés.
+
+   Ce garde-fou décourage, il ne verrouille pas : un étudiant qui ouvre les
+   outils de développement en fera ce qu'il veut. Le but est de supprimer le
+   réflexe, pas de gagner une course à l'armement. */
+function interdireLeCollage(editeur) {
+  let dernierAvertissement = 0;
+
+  editeur.on("beforeChange", (instance, changement) => {
+    if (changement.origin !== "paste") return;
+    changement.cancel();
+
+    // Un Ctrl-V maintenu enfoncé ne doit pas noyer la console de messages.
+    const maintenant = Date.now();
+    if (maintenant - dernierAvertissement < 3000) return;
+    dernierAvertissement = maintenant;
+    appendConsole(
+      "warn",
+      "Le collage est désactivé dans cet éditeur : tape le code toi-même, c'est comme ça qu'il rentre."
+    );
+  });
+}
+
 /* ── Initialisation ──────────────────────────────────────────────────────── */
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -500,11 +534,16 @@ document.addEventListener("DOMContentLoaded", () => {
     indentUnit: 2,
     tabSize: 2,
     lineWrapping: true,
+    // Le glisser-déposer de texte est la seconde porte d'entrée pour du code
+    // tout fait ; CodeMirror sait la fermer lui-même.
+    dragDrop: false,
     extraKeys: {
       "Ctrl-Enter": runCode,
       "Cmd-Enter": runCode,
     },
   });
+
+  interdireLeCollage(cmEditor);
 
   fillExampleSelect();
 
