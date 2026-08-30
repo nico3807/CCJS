@@ -146,6 +146,73 @@ function buildGameDocument(userCode, channel) {
       if (!window.Phaser) {
         send('error', ['Phaser n\\'a pas pu être chargé. Vérifie ta connexion internet.']);
       }
+
+      /* Quand la pop-up « résultat attendu » s'ouvre, l'aperçu de l'éditeur
+         continue de tourner derrière elle : deux jeux Phaser se disputent alors
+         le processeur. Les images s'espacent, donc les corps avancent de plus
+         gros pas entre deux tests de collision — et un joueur rapide finit par
+         franchir une plate-forme d'un seul bond de simulation.
+
+         La page parente nous demande donc d'endormir la boucle. Encore
+         faut-il tenir la liste des jeux créés : le code de l'étudiant écrit
+         « new Phaser.Game(config) » sans garder la référence. */
+      var jeux = [];
+      var dortDeja = false;
+
+      if (window.Phaser && Phaser.Game) {
+        var JeuOriginal = Phaser.Game;
+        var JeuSuivi = function (config) {
+          // Un constructeur qui retourne un objet renvoie cet objet : le code
+          // de l'étudiant reçoit bien une vraie instance de Phaser.Game.
+          var jeu = new JeuOriginal(config);
+          jeux.push(jeu);
+          /* Attention au calendrier : à la sortie du constructeur, et même à
+             l'événement « ready », loop.running vaut encore false — Phaser ne
+             lance sa boucle qu'ensuite, et sleep() ne fait rien sur une boucle
+             à l'arrêt. On attend donc un tour de boucle d'événements après
+             « ready » pour endormir un aperçu né pendant la pop-up. */
+          try {
+            jeu.events.once('ready', function () {
+              setTimeout(function () { if (dortDeja) endormir(jeu); }, 0);
+            });
+          } catch (e) { /* version de Phaser inattendue */ }
+          return jeu;
+        };
+        JeuSuivi.prototype = JeuOriginal.prototype; // pour que instanceof tienne
+        Phaser.Game = JeuSuivi;
+      }
+
+      function endormir(jeu) {
+        // sleep() coupe le requestAnimationFrame : le jeu ne consomme plus rien.
+        try { jeu.loop.sleep(); } catch (e) { /* version de Phaser inattendue */ }
+      }
+
+      function reveiller(jeu) {
+        // wake(true) reprend « sans couture » : sans lui, Phaser rattraperait
+        // d'un coup tout le temps écoulé pendant la pause.
+        try { jeu.loop.wake(true); } catch (e) { /* idem */ }
+      }
+
+      window.addEventListener('message', function (e) {
+        var ordre = e.data;
+        if (!ordre || ordre.source !== 'phaser-playground-parent') return;
+        if (ordre.action === 'dormir') {
+          dortDeja = true;
+          jeux.forEach(endormir);
+        } else if (ordre.action === 'reveiller') {
+          dortDeja = false;
+          jeux.forEach(reveiller);
+        }
+      });
+
+      /* Relancer l'aperçu remplace le document de l'iframe. Un ordre envoyé
+         pendant ce remplacement arriverait dans le document sortant et serait
+         perdu. On annonce donc notre arrivée, et la page parente nous renvoie
+         l'état courant — ainsi un aperçu qui démarre pop-up déjà ouverte
+         naît endormi. */
+      try {
+        parent.postMessage({ source: 'phaser-playground-pret', channel: ${JSON.stringify(channel)} }, '*');
+      } catch (e) { /* la fenêtre parente a pu changer */ }
     })();
   `;
 
@@ -250,10 +317,34 @@ function consignes(code) {
 
 /* ── Pop-up « résultat attendu » ─────────────────────────────────────────── */
 
+/** Endort ou réveille l'aperçu de l'éditeur, caché derrière la pop-up.
+    Deux jeux Phaser côte à côte se partagent le processeur : les images
+    s'espacent, la physique avance par pas plus grands, et les collisions
+    finissent par être franchies. On laisse donc tourner un seul jeu à la fois. */
+function piloteApercuEditeur(action) {
+  const frame = document.getElementById("gameFrame");
+  if (!frame.contentWindow) return;
+  frame.contentWindow.postMessage(
+    { source: "phaser-playground-parent", action },
+    "*"
+  );
+}
+
+// Un aperçu qui vient de démarrer nous salue : on lui répond l'état courant,
+// sans quoi un aperçu relancé pop-up ouverte se remettrait à tourner.
+window.addEventListener("message", (event) => {
+  if (!event.data || event.data.source !== "phaser-playground-pret") return;
+  if (event.data.channel !== "editeur") return;
+  if (document.getElementById("solutionModal").hidden) return;
+  piloteApercuEditeur("dormir");
+});
+
 function openSolution() {
   const modal = document.getElementById("solutionModal");
   modal.hidden = false;
   document.getElementById("solutionLabel").textContent = currentExample.label;
+  // On endort avant de lancer la solution, pour qu'elle démarre à plein régime.
+  piloteApercuEditeur("dormir");
   runInFrame(
     document.getElementById("solutionFrame"),
     codeSolution(currentExample.code),
@@ -266,6 +357,8 @@ function closeSolution() {
   modal.hidden = true;
   // On vide l'iframe pour arrêter la boucle de rendu du jeu.
   document.getElementById("solutionFrame").src = "about:blank";
+  // L'étudiant retrouve son aperçu là où il l'avait laissé.
+  piloteApercuEditeur("reveiller");
 }
 
 /* ── Assistant pédagogique ───────────────────────────────────────────────── */
