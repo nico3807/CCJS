@@ -2648,4 +2648,245 @@ function toucherEnnemi(un_player, un_ennemi) {
 
 new Phaser.Game(config);`,
   },
+  {
+    id: "tuto-particules",
+    group: "Tutoriels",
+    label: "T15 · Particules : poussière et étincelles",
+    description:
+      "Trois effets qui ne changent aucune règle du jeu mais le rendent agréable : poussière à l'atterrissage, traînée pendant la course, gerbe à chaque étoile ramassée.",
+    code: `/* Tutoriel : donner du corps au jeu avec des particules.
+
+   Flèches pour se déplacer, flèche haut pour sauter, et on ramasse les
+   étoiles. Attention : rien de ce que tu vas écrire ici ne change les règles
+   du jeu. Il marchait avant, il marchera pareil après — mais il sera
+   nettement plus agréable. C'est tout l'objet de l'exercice.
+
+   ATTENTION, PIÈGE : l'API des particules a changé avec Phaser 3.60, et la
+   plupart des tutoriels que tu trouveras en ligne sont restés à l'ancienne.
+   Ils écrivent :
+
+     this.add.particles('img_etoile').createEmitter({ ... });
+
+   Cette forme n'existe plus. Elle lève l'erreur « createEmitter removed »,
+   qui n'explique pas grand-chose. La bonne écriture est celle-ci :
+
+     this.add.particles(x, y, 'img_etoile', { ... });
+
+   et elle te rend directement l'émetteur. */
+
+const config = {
+  type: Phaser.AUTO,
+  width: 800,
+  height: 600,
+  scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
+  physics: {
+    default: 'arcade',
+    arcade: { gravity: { y: 300 }, debug: false }
+  },
+  scene: { preload: preload, create: create, update: update }
+};
+
+let groupe_plateformes;
+let player;
+let clavier;
+let groupe_etoiles;
+let zone_texte_score;
+let score = 0;
+
+// Les trois émetteurs. Un émetteur n'est pas un sprite : c'est un objet
+// d'affichage qui fabrique des particules, puis les fait vivre et mourir
+// tout seul. On n'a jamais à s'occuper de chaque particule une par une.
+let poussiere;
+let trainee;
+let gerbe;
+
+// Le joueur touchait-il le sol à l'image précédente ? Sans cette mémoire on
+// saurait seulement dire « il est au sol », jamais « il VIENT DE se poser ».
+// Même raisonnement que JustDown pour une touche du clavier.
+let auSolAvant = true;
+
+function preload() {
+  this.load.image('img_ciel', 'assets/sky.png');
+  this.load.image('img_plateforme', 'assets/platform.png');
+  this.load.image('img_etoile', 'assets/star.png');
+  this.load.spritesheet('img_perso', 'assets/dude.png', {
+    frameWidth: 32,
+    frameHeight: 48
+  });
+}
+
+function create() {
+  score = 0;
+  auSolAvant = true;
+
+  this.add.image(400, 300, 'img_ciel');
+
+  groupe_plateformes = this.physics.add.staticGroup();
+  groupe_plateformes.create(400, 584, 'img_plateforme').setScale(2).refreshBody();
+  groupe_plateformes.create(120, 380, 'img_plateforme');
+  groupe_plateformes.create(680, 380, 'img_plateforme');
+  groupe_plateformes.create(400, 220, 'img_plateforme');
+
+  this.anims.create({
+    key: 'anim_tourne_gauche',
+    frames: this.anims.generateFrameNumbers('img_perso', { start: 0, end: 3 }),
+    frameRate: 10,
+    repeat: -1
+  });
+  this.anims.create({
+    key: 'anim_tourne_droite',
+    frames: this.anims.generateFrameNumbers('img_perso', { start: 5, end: 8 }),
+    frameRate: 10,
+    repeat: -1
+  });
+  this.anims.create({
+    key: 'anim_face',
+    frames: [{ key: 'img_perso', frame: 4 }],
+    frameRate: 20
+  });
+
+  player = this.physics.add.sprite(100, 450, 'img_perso');
+  player.setBounce(0.2);
+  player.setCollideWorldBounds(true);
+  this.physics.add.collider(player, groupe_plateformes);
+
+  /* VOICI UN ÉMETTEUR TOUT ÉCRIT, qui te servira de modèle pour les deux
+     autres. Lis bien les deux façons de décrire une valeur, car elles se
+     ressemblent et ne veulent pas du tout dire la même chose :
+
+       scale: { start: 0.8, end: 0 }   ← varie DANS LE TEMPS, du début de la
+                                         vie de la particule jusqu'à sa fin
+       speed: { min: 120, max: 260 }   ← tirée AU HASARD entre deux bornes,
+                                         une fois pour toutes, à la naissance
+
+     emitting: false met l'émetteur au repos : il ne crache rien tant qu'on
+     ne lui demande pas explicitement, avec explode(). */
+  gerbe = this.add.particles(0, 0, 'img_etoile', {
+    speed: { min: 120, max: 260 },
+    scale: { start: 0.8, end: 0 },
+    alpha: { start: 1, end: 0 },
+    lifespan: 700,
+    gravityY: 250,
+    blendMode: 'ADD',
+    emitting: false
+  });
+
+  // @trou Créer l'émetteur de poussière au repos (emitting: false) : des particules 'img_etoile' teintées en ocre (0xffe08a), lancées vers le haut (angle entre 200 et 340) à une vitesse tirée entre 40 et 90, qui rétrécissent et s'effacent en 500 ms, avec gravityY à 200 pour qu'elles retombent
+  poussiere = this.add.particles(0, 0, 'img_etoile', {
+    speed: { min: 40, max: 90 },
+    // En Phaser, 0 degré pointe vers la droite et les angles tournent dans
+    // le sens des aiguilles d'une montre : 270 est donc la verticale vers
+    // le haut, et 200-340 ouvre un éventail autour d'elle.
+    angle: { min: 200, max: 340 },
+    scale: { start: 0.6, end: 0 },
+    alpha: { start: 0.9, end: 0 },
+    lifespan: 500,
+    gravityY: 200,
+    tint: 0xffe08a,
+    emitting: false
+  });
+  // @fin
+
+  // @trou Créer la traînée : de petites particules bleu pâle (0x9ad8ff) en blendMode 'ADD', qui s'effacent en 300 ms, au repos elles aussi ; puis l'accrocher au joueur avec startFollow() pour ne pas avoir à recopier sa position à chaque image
+  trainee = this.add.particles(0, 0, 'img_etoile', {
+    speed: 20,
+    scale: { start: 0.35, end: 0 },
+    alpha: { start: 0.7, end: 0 },
+    lifespan: 300,
+    tint: 0x9ad8ff,
+    // 'ADD' additionne les couleurs au lieu de les recouvrir : les
+    // particules qui se chevauchent deviennent plus lumineuses.
+    blendMode: 'ADD',
+    quantity: 1,
+    emitting: false
+  });
+  // startFollow() colle l'émetteur au sprite : il suivra le joueur tout
+  // seul, y compris pendant les sauts.
+  trainee.startFollow(player);
+  // @fin
+
+  groupe_etoiles = this.physics.add.group();
+  for (let i = 0; i < 8; i++) {
+    groupe_etoiles.create(70 + 90 * i, 10, 'img_etoile');
+  }
+  this.physics.add.collider(groupe_etoiles, groupe_plateformes);
+  groupe_etoiles.children.iterate(function (etoile_i) {
+    etoile_i.setBounceY(Phaser.Math.FloatBetween(0.4, 0.7));
+  });
+  this.physics.add.overlap(player, groupe_etoiles, ramasserEtoile, null, this);
+
+  clavier = this.input.keyboard.createCursorKeys();
+
+  zone_texte_score = this.add.text(16, 16, 'Score : 0', {
+    fontSize: '28px',
+    fill: '#000'
+  });
+  this.add.text(16, 52, 'Cours et saute : regarde la poussiere et la trainee', {
+    fontSize: '16px',
+    fill: '#000'
+  });
+}
+
+function update() {
+  if (clavier.left.isDown) {
+    player.setVelocityX(-160);
+    player.anims.play('anim_tourne_gauche', true);
+  } else if (clavier.right.isDown) {
+    player.setVelocityX(160);
+    player.anims.play('anim_tourne_droite', true);
+  } else {
+    player.setVelocityX(0);
+    player.anims.play('anim_face', true);
+  }
+
+  if (clavier.up.isDown && player.body.touching.down) {
+    player.setVelocityY(-330);
+  }
+
+  // @trou Faire jaillir 6 particules de poussière sous les pieds du joueur au moment précis où il se pose (il est au sol maintenant alors qu'il ne l'était pas à l'image d'avant), puis n'allumer la traînée avec start() que pendant qu'il court au sol, et l'éteindre avec stop() sinon. Ne pas oublier de mémoriser l'état du sol pour l'image suivante
+  const auSol = player.body.blocked.down || player.body.touching.down;
+
+  // Le « front montant » : au sol maintenant, en l'air juste avant.
+  // Sans la comparaison avec auSolAvant, la poussière partirait à chaque
+  // image tant qu'il reste posé, au lieu d'une seule fois.
+  if (auSol && auSolAvant === false) {
+    // Le sprite fait 48 px de haut et son origine est au centre :
+    // ses pieds sont donc 24 px plus bas que player.y.
+    poussiere.explode(6, player.x, player.y + 24);
+  }
+
+  const court = auSol && Math.abs(player.body.velocity.x) > 10;
+  // On ne rappelle start() que s'il était éteint : le relancer à chaque
+  // image remettrait son compteur interne à zéro sans arrêt.
+  if (court && trainee.emitting === false) {
+    trainee.start();
+  } else if (court === false && trainee.emitting === true) {
+    trainee.stop();
+  }
+
+  auSolAvant = auSol;
+  // @fin
+}
+
+function ramasserEtoile(un_player, une_etoile) {
+  une_etoile.disableBody(true, true);
+
+  score += 10;
+  zone_texte_score.setText('Score : ' + score);
+
+  // @trou Faire éclater 16 particules de la gerbe à l'endroit exact de l'étoile ramassée
+  // explode(nombre, x, y) sert les émetteurs au repos : il crache d'un coup,
+  // à l'endroit demandé, sans avoir à déplacer l'émetteur avant.
+  gerbe.explode(16, une_etoile.x, une_etoile.y);
+  // @fin
+
+  if (groupe_etoiles.countActive(true) === 0) {
+    groupe_etoiles.children.iterate(function (etoile_i) {
+      etoile_i.enableBody(true, etoile_i.x, 0, true, true);
+    });
+  }
+}
+
+new Phaser.Game(config);`,
+  },
 ];
