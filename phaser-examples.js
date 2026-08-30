@@ -2722,10 +2722,32 @@ function create() {
   this.add.image(400, 300, 'img_ciel');
 
   groupe_plateformes = this.physics.add.staticGroup();
-  groupe_plateformes.create(400, 584, 'img_plateforme').setScale(2).refreshBody();
-  groupe_plateformes.create(120, 380, 'img_plateforme');
-  groupe_plateformes.create(680, 380, 'img_plateforme');
-  groupe_plateformes.create(400, 220, 'img_plateforme');
+  groupe_plateformes.create(200, 584, 'img_plateforme');
+  groupe_plateformes.create(600, 584, 'img_plateforme');
+
+  /* Ici on saute beaucoup, donc les paliers doivent être franchement
+     atteignables. Deux contraintes, et la seconde est facile à oublier :
+
+     1. La hauteur. Avec une gravité de 300 et une impulsion de -330, le
+        joueur s'élève de 181 px (v² / 2g). Posé au sol son centre est à
+        544 et il culmine à 365 ; il se pose sur un palier du bas quand son
+        centre atteint 398, soit 33 px de marge. Depuis ce palier il culmine
+        à 219 et se pose en haut à 258 : 39 px de marge. L'escalier tient,
+        mais de peu — si tu déplaces un palier, refais le calcul.
+
+     2. La largeur. L'image fait 400 px, soit la moitié de l'écran : à
+        taille réelle, un palier surplombe l'endroit d'où on s'élance, et
+        le joueur se cogne dessous au lieu de monter — on ne traverse pas
+        une plate-forme par en dessous. On les réduit donc de moitié pour
+        laisser un couloir libre entre les paliers, et refreshBody() est
+        indispensable : sans lui la boîte de collision garderait la taille
+        d'origine.
+
+     Conséquence pour le joueur : il faut prendre de l'élan. Sauter collé
+     au bord d'un palier, c'est se cogner le flanc et retomber. */
+  groupe_plateformes.create(150, 430, 'img_plateforme').setScale(0.5).refreshBody();
+  groupe_plateformes.create(650, 430, 'img_plateforme').setScale(0.5).refreshBody();
+  groupe_plateformes.create(400, 290, 'img_plateforme').setScale(0.5).refreshBody();
 
   this.anims.create({
     key: 'anim_tourne_gauche',
