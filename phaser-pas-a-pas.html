@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Créer un projet Phaser, pas à pas</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#141A24;
+  --ink-2:#1C2531;
+  --paper:#EDEEF2;
+  --muted:#8794A8;
+  --sky:#5FA8E0;
+  --star:#EFA92B;
+  --line:#2A3546;
+  --sans:"Space Grotesk","Helvetica Neue",Arial,sans-serif;
+  --mono:"JetBrains Mono","SF Mono",Consolas,monospace;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0;background:var(--ink);color:var(--paper);
+  font-family:var(--sans);font-size:18px;line-height:1.6;
+  display:flex;flex-direction:column;overflow:hidden;
+}
+
+header{
+  display:flex;align-items:baseline;gap:14px;
+  padding:20px 40px 0;flex:none;
+}
+header h1{font-size:19px;font-weight:500;margin:0;letter-spacing:.01em}
+header span{font-size:14px;color:var(--muted)}
+
+main{flex:1;position:relative;overflow:hidden}
+
+.slide{
+  position:absolute;inset:0;
+  display:none;
+  grid-template-columns:minmax(0,1fr) minmax(0,1.05fr);
+  gap:56px;align-content:safe center;align-items:center;
+  padding:24px 40px;
+  overflow-y:auto;
+}
+.slide.on{display:grid}
+
+.num{
+  font-family:var(--mono);font-size:13px;color:var(--sky);
+  border:1px solid var(--line);border-radius:2px;
+  padding:2px 9px;display:inline-block;margin-bottom:22px;
+}
+.slide h2{
+  font-size:clamp(28px,3.6vw,46px);font-weight:700;line-height:1.1;
+  margin:0 0 18px;letter-spacing:-.02em;
+}
+.slide p{margin:0 0 14px;max-width:34em;color:#C6CDD9}
+.slide p strong{color:var(--paper);font-weight:500}
+.slide code{font-family:var(--mono);font-size:.88em;color:var(--star)}
+
+.when{
+  margin-top:22px;padding-top:16px;border-top:1px solid var(--line);
+  font-size:15px;color:var(--muted);max-width:34em;
+}
+
+pre{
+  font-family:var(--mono);font-size:clamp(12px,1.15vw,16px);line-height:1.75;
+  background:var(--ink-2);border:1px solid var(--line);border-radius:6px;
+  margin:0;padding:22px 24px;overflow:auto;max-height:74vh;
+  white-space:pre;
+}
+.k{color:var(--sky)}
+.s{color:#8FD6A9}
+.c{color:#5E6B7E;font-style:italic}
+.f{color:var(--star)}
+
+.tree{color:#C6CDD9}
+.tree b{color:var(--paper);font-weight:500}
+.tree i{color:var(--muted);font-style:normal}
+
+canvas{
+  background:#6BB6E8;border-radius:6px;border:1px solid var(--line);
+  display:block;width:100%;max-width:420px;
+}
+.tick{
+  font-family:var(--mono);font-size:14px;color:var(--muted);
+  margin-top:12px;display:flex;align-items:center;gap:14px;
+}
+.tick b{color:var(--star);font-weight:500}
+.tick button{
+  background:none;border:1px solid var(--line);color:var(--paper);
+  font-family:var(--sans);font-size:13px;
+  border-radius:4px;padding:4px 12px;cursor:pointer;
+}
+.tick button:hover{border-color:var(--sky)}
+.tick button:focus-visible{outline:2px solid var(--sky);outline-offset:2px}
+
+footer{
+  flex:none;display:flex;align-items:center;gap:28px;
+  padding:16px 40px 22px;border-top:1px solid var(--line);
+}
+.rail{display:flex;gap:4px;flex:1;list-style:none;margin:0;padding:0}
+.rail li{flex:1}
+.rail button{
+  width:100%;text-align:left;background:none;border:0;cursor:pointer;
+  padding:8px 0 0;color:var(--muted);
+  font-family:var(--sans);font-size:12.5px;
+  border-top:2px solid var(--line);
+  transition:color .18s,border-color .18s;
+}
+.rail button:hover{color:var(--paper)}
+.rail li.done button{border-top-color:#3D5674}
+.rail li.act button{border-top-color:var(--sky);color:var(--paper)}
+.rail button:focus-visible{outline:2px solid var(--sky);outline-offset:3px}
+
+nav{display:flex;gap:8px}
+nav button{
+  background:none;border:1px solid var(--line);color:var(--paper);
+  font-family:var(--sans);font-size:15px;
+  border-radius:4px;padding:7px 15px;cursor:pointer;
+  transition:border-color .18s,background .18s;
+}
+nav button:hover{border-color:var(--sky)}
+nav button:focus-visible{outline:2px solid var(--sky);outline-offset:2px}
+.hint{font-size:13px;color:var(--muted);white-space:nowrap}
+
+@media (max-width:900px){
+  .slide{grid-template-columns:1fr;gap:24px;align-content:start;overflow:auto}
+  pre{max-height:none}
+  .hint{display:none}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Créer un projet Phaser</h1>
+  <span>BUT MMI · d'après le tutoriel de darties.fr</span>
+</header>
+
+<main id="deck">
+
+<section class="slide on">
+  <div>
+    <span class="num">1 / 6</span>
+    <h2>Poser les dossiers</h2>
+    <p>Un projet Phaser tient dans deux dossiers. <strong>Tout le code source</strong> va dans <code>src/</code>, <strong>toutes les ressources</strong> (images, sons, spritesheets) vont dans <code>src/assets/</code>.</p>
+    <p>Séparer les deux dès le départ évite de chercher ses fichiers au bout de trois séances.</p>
+    <div class="when">Sur un projet plus gros, on découpe assets/ en sous-dossiers : images, sons, cartes.</div>
+  </div>
+  <pre class="tree">mon-projet/
+├── <b>index.html</b>
+└── <b>src/</b>
+    ├── <b>game.js</b>          <i>le code du jeu</i>
+    └── <b>assets/</b>          <i>les ressources</i>
+        ├── sky.png
+        ├── platform.png
+        ├── dude.png
+        └── star.png</pre>
+</section>
+
+<section class="slide">
+  <div>
+    <span class="num">2 / 6</span>
+    <h2>Brancher Phaser sur la page</h2>
+    <p>Phaser est une librairie JavaScript : le jeu tourne dans le navigateur. La page charge <strong>d'abord la librairie</strong>, ensuite notre code.</p>
+    <p>L'ordre compte. Si <code>game.js</code> passe en premier, l'objet <code>Phaser</code> n'existe pas encore.</p>
+    <div class="when">Dans VS Code, l'extension Live Server sert la page et la recharge à chaque sauvegarde.</div>
+  </div>
+  <pre>&lt;<span class="k">script</span> src=<span class="s">"phaser.min.js"</span>&gt;&lt;/<span class="k">script</span>&gt;
+&lt;<span class="k">script</span> src=<span class="s">"src/game.js"</span>&gt;&lt;/<span class="k">script</span>&gt;</pre>
+</section>
+
+<section class="slide">
+  <div>
+    <span class="num">3 / 6</span>
+    <h2>Décrire le jeu</h2>
+    <p>Tout part d'un objet <code>config</code> : la taille de la fenêtre, le moteur physique, et les trois fonctions qui composent la scène.</p>
+    <p><code>new Phaser.Game(config)</code> lance la machine. À ce stade, l'écran est noir et fait 800 × 600 : c'est normal, rien n'a encore été dessiné.</p>
+    <div class="when">Passer debug à true affiche les hitbox et les vecteurs de déplacement. Très utile pour comprendre les collisions.</div>
+  </div>
+  <pre><span class="k">var</span> config = {
+  type: Phaser.AUTO,
+  width: <span class="f">800</span>,
+  height: <span class="f">600</span>,
+  physics: {
+    default: <span class="s">'arcade'</span>,
+    arcade: {
+      gravity: { y: <span class="f">300</span> },
+      debug: <span class="k">false</span>
+    }
+  },
+  scene: {
+    preload: preload,
+    create: create,
+    update: update
+  }
+};
+
+<span class="k">new</span> Phaser.Game(config);</pre>
+</section>
+
+<section class="slide">
+  <div>
+    <span class="num">4 / 6</span>
+    <h2>preload() — charger</h2>
+    <p>Appelée <strong>une seule fois</strong>, au chargement de la scène. On y met les images en mémoire et on donne à chacune une <strong>clé</strong>.</p>
+    <p>C'est cette clé, et non le chemin du fichier, qu'on réutilisera partout ensuite.</p>
+    <div class="when">Un spritesheet demande en plus la taille d'une vignette : frameWidth et frameHeight.</div>
+  </div>
+  <pre><span class="k">function</span> <span class="f">preload</span>() {
+
+  <span class="k">this</span>.load.image(<span class="s">"img_ciel"</span>,
+                  <span class="s">"src/assets/sky.png"</span>);
+
+  <span class="k">this</span>.load.image(<span class="s">"img_plateforme"</span>,
+                  <span class="s">"src/assets/platform.png"</span>);
+
+  <span class="k">this</span>.load.spritesheet(<span class="s">"img_perso"</span>,
+                  <span class="s">"src/assets/dude.png"</span>,
+                  { frameWidth: <span class="f">32</span>, frameHeight: <span class="f">48</span> });
+}</pre>
+</section>
+
+<section class="slide">
+  <div>
+    <span class="num">5 / 6</span>
+    <h2>create() — construire</h2>
+    <p>Appelée <strong>à chaque lancement</strong> de la scène. On y monte le décor : fond, plateformes, joueur, animations, collisions.</p>
+    <p>Les éléments d'une même famille vont dans un <strong>groupe</strong>. Une seule règle de collision suffit alors pour toutes les plateformes.</p>
+    <div class="when">staticGroup() pour ce qui ne bouge pas et ignore la gravité. group() pour ce qui tombe et rebondit.</div>
+  </div>
+  <pre><span class="k">function</span> <span class="f">create</span>() {
+
+  <span class="c">// le fond, ancré par son centre</span>
+  <span class="k">this</span>.add.image(<span class="f">400</span>, <span class="f">300</span>, <span class="s">"img_ciel"</span>);
+
+  <span class="c">// les plateformes, regroupées</span>
+  groupe_plateformes = <span class="k">this</span>.physics.add.staticGroup();
+  groupe_plateformes.create(<span class="f">200</span>, <span class="f">584</span>, <span class="s">"img_plateforme"</span>);
+  groupe_plateformes.create(<span class="f">600</span>, <span class="f">584</span>, <span class="s">"img_plateforme"</span>);
+
+  <span class="c">// le joueur</span>
+  player = <span class="k">this</span>.physics.add.sprite(<span class="f">100</span>, <span class="f">450</span>, <span class="s">"img_perso"</span>);
+  player.setCollideWorldBounds(<span class="k">true</span>);
+
+  <span class="c">// il s'arrête sur les plateformes</span>
+  <span class="k">this</span>.physics.add.collider(player, groupe_plateformes);
+
+  clavier = <span class="k">this</span>.input.keyboard.createCursorKeys();
+}</pre>
+</section>
+
+<section class="slide">
+  <div>
+    <span class="num">6 / 6</span>
+    <h2>update() — la boucle</h2>
+    <p>Appelée <strong>en boucle</strong>, environ soixante fois par seconde, tant que la scène tourne. Dès qu'elle se termine, elle repart.</p>
+    <p>C'est là qu'on lit le clavier et qu'on décide de la vitesse du joueur. Le moteur physique s'occupe du reste : gravité, collisions, rebonds.</p>
+    <canvas id="demo" width="420" height="150" aria-label="Animation d'un carré qui se déplace sur une plateforme"></canvas>
+    <p class="tick">
+      update() exécutée <b id="frames">0</b> fois
+      <button id="anim">Pause</button>
+    </p>
+  </div>
+  <pre><span class="k">function</span> <span class="f">update</span>() {
+
+  <span class="k">if</span> (clavier.right.isDown) {
+    player.setVelocityX(<span class="f">160</span>);
+  } <span class="k">else if</span> (clavier.left.isDown) {
+    player.setVelocityX(<span class="f">-160</span>);
+  } <span class="k">else</span> {
+    player.setVelocityX(<span class="f">0</span>);
+  }
+}</pre>
+</section>
+
+</main>
+
+<footer>
+  <ol class="rail" id="rail"></ol>
+  <nav>
+    <button id="prev">Précédent</button>
+    <button id="next">Suivant</button>
+  </nav>
+  <span class="hint">← → pour naviguer</span>
+</footer>
+
+<script>
+var slides = document.querySelectorAll('.slide');
+var titles = ['Dossiers', 'Page web', 'Configuration', 'preload()', 'create()', 'update()'];
+var rail = document.getElementById('rail');
+var current = 0;
+
+titles.forEach(function (title, i) {
+  var li = document.createElement('li');
+  var b = document.createElement('button');
+  b.textContent = (i + 1) + '. ' + title;
+  b.onclick = function () { show(i); };
+  li.appendChild(b);
+  rail.appendChild(li);
+});
+
+function show(i) {
+  current = Math.max(0, Math.min(slides.length - 1, i));
+  for (var n = 0; n < slides.length; n++) {
+    slides[n].classList.toggle('on', n === current);
+    rail.children[n].className = n === current ? 'act' : (n < current ? 'done' : '');
+  }
+}
+
+document.getElementById('next').onclick = function () { show(current + 1); };
+document.getElementById('prev').onclick = function () { show(current - 1); };
+
+document.addEventListener('keydown', function (e) {
+  if (e.key === 'ArrowRight' || e.key === ' ') { show(current + 1); e.preventDefault(); }
+  if (e.key === 'ArrowLeft') { show(current - 1); }
+  if (e.key === 'Home') { show(0); }
+});
+
+// petite démo : un carré qui va et vient, comme le ferait update()
+var canvas = document.getElementById('demo');
+var ctx = canvas.getContext('2d');
+var x = 40;
+var vx = 1.6;
+var count = 0;
+var bouton = document.getElementById('anim');
+
+// mise en pause si le système demande de limiter les animations
+var running = !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+bouton.textContent = running ? 'Pause' : 'Lecture';
+
+bouton.onclick = function () {
+  running = !running;
+  bouton.textContent = running ? 'Pause' : 'Lecture';
+};
+
+function draw() {
+  ctx.fillStyle = '#6BB6E8';
+  ctx.fillRect(0, 0, 420, 150);
+
+  ctx.fillStyle = '#4E7C3E';
+  ctx.fillRect(0, 120, 420, 30);
+
+  ctx.fillStyle = '#EFA92B';
+  ctx.fillRect(x, 88, 26, 32);
+
+  if (running) {
+    x += vx;
+    if (x < 20 || x > 374) { vx = -vx; }
+    count++;
+    document.getElementById('frames').textContent = count;
+  }
+  requestAnimationFrame(draw);
+}
+draw();
+
+show(0);
+</script>
+</body>
+</html>
