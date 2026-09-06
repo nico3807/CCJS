@@ -1,0 +1,80 @@
+/* ─────────────────────────────────────────────────────────────────────────
+   Polices hébergées localement.
+
+   Pourquoi : appeler fonts.googleapis.com transmet à Google l'adresse IP et
+   l'en-tête User-Agent de chaque visiteur, sans son consentement. Pour un
+   site universitaire public, autant éviter la question : les deux polices
+   sont sous licence SIL OFL 1.1, leur redistribution est donc autorisée
+   (voir OFL-space-grotesk.txt et OFL-jetbrains-mono.txt dans ce dossier).
+
+   Les fichiers sont ceux que Google servait, récupérés tels quels — le rendu
+   est donc identique, pixel pour pixel.
+
+   Deux subtilités reprises de la feuille de style d'origine :
+
+   1. Ce sont des polices VARIABLES : un seul fichier couvre toutes les
+      graisses. D'où « font-weight: 400 700 », qui déclare un intervalle et
+      non une valeur. Découper en trois @font-face pointant vers le même
+      fichier ferait télécharger la même chose trois fois.
+
+   2. « unicode-range » évite de charger le fichier latin-ext tant que la
+      page n'affiche aucun caractère qui s'y trouve. Le français tient dans
+      le sous-ensemble « latin » (accents, œ, €, guillemets) : en pratique
+      latin-ext ne sera donc jamais téléchargé, il est là par sécurité.
+
+   « font-display: swap » : le texte s'affiche tout de suite dans la police
+   de secours, puis bascule. Mieux qu'un titre invisible le temps du
+   chargement.
+   ───────────────────────────────────────────────────────────────────────── */
+
+/* ── Space Grotesk (titres et texte courant) ─────────────────────────────── */
+
+@font-face {
+  font-family: 'Space Grotesk';
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url('./space-grotesk-latin-ext.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7,
+                 U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF,
+                 U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0,
+                 U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+@font-face {
+  font-family: 'Space Grotesk';
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url('./space-grotesk-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6,
+                 U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F,
+                 U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF,
+                 U+FFFD;
+}
+
+/* ── JetBrains Mono (blocs de code) ──────────────────────────────────────── */
+
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 400 500;
+  font-display: swap;
+  src: url('./jetbrains-mono-latin-ext.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7,
+                 U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF,
+                 U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0,
+                 U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 400 500;
+  font-display: swap;
+  src: url('./jetbrains-mono-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6,
+                 U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F,
+                 U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF,
+                 U+FFFD;
+}
