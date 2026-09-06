@@ -4,9 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Créer un projet Phaser, pas à pas</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<!-- Polices hébergées ici même : aucune requête vers Google, donc aucune
+     adresse IP d'étudiant transmise. Détails dans fonts/polices.css. -->
+<link rel="stylesheet" href="./fonts/polices.css">
+<!-- On précharge le seul fichier réellement utilisé au premier affichage :
+     sans cela le navigateur ne le découvre qu'après avoir lu la feuille de
+     style, ce qui retarde la bascule depuis la police de secours. -->
+<link rel="preload" href="./fonts/space-grotesk-latin.woff2" as="font" type="font/woff2" crossorigin>
 <style>
 :root{
   --ink:#141A24;
@@ -308,15 +312,33 @@ function show(i) {
     slides[n].classList.toggle('on', n === current);
     rail.children[n].className = n === current ? 'act' : (n < current ? 'done' : '');
   }
+  /* Changer de diapo peut rendre visible ou masquer la démo animée : c'est le
+     moment de démarrer ou d'arrêter sa boucle. On peint aussi une image, pour
+     que la scène soit visible même quand l'animation est en pause. */
+  dessiner();
+  ajusterBoucle();
 }
 
 document.getElementById('next').onclick = function () { show(current + 1); };
 document.getElementById('prev').onclick = function () { show(current - 1); };
 
 document.addEventListener('keydown', function (e) {
-  if (e.key === 'ArrowRight' || e.key === ' ') { show(current + 1); e.preventDefault(); }
-  if (e.key === 'ArrowLeft') { show(current - 1); }
-  if (e.key === 'Home') { show(0); }
+  /* La barre d'espace sert à DEUX choses : avancer d'une diapo, et activer
+     le bouton qui a le focus. Si on l'interceptait toujours, les boutons
+     Pause / Précédent / Suivant deviendraient inutilisables au clavier :
+     on tabule jusqu'à eux, on appuie sur Espace, et la diapo change au lieu
+     d'activer le bouton. On laisse donc l'espace au navigateur dès qu'un
+     élément interactif a le focus.
+     Les flèches, elles, n'activent aucun bouton : pas besoin de les protéger,
+     et il vaut mieux qu'elles continuent de fonctionner juste après un clic
+     sur la frise (le focus reste alors sur le bouton cliqué). */
+  var surUnControle = e.target.closest &&
+                      e.target.closest('button, a, input, select, textarea');
+
+  if (e.key === 'ArrowRight') { show(current + 1); e.preventDefault(); }
+  else if (e.key === 'ArrowLeft') { show(current - 1); e.preventDefault(); }
+  else if (e.key === 'Home') { show(0); e.preventDefault(); }
+  else if (e.key === ' ' && !surUnControle) { show(current + 1); e.preventDefault(); }
 });
 
 // petite démo : un carré qui va et vient, comme le ferait update()
@@ -334,9 +356,19 @@ bouton.textContent = running ? 'Pause' : 'Lecture';
 bouton.onclick = function () {
   running = !running;
   bouton.textContent = running ? 'Pause' : 'Lecture';
+  ajusterBoucle();
 };
 
-function draw() {
+/* On repère la diapo qui contient le canvas plutôt que d'écrire son numéro :
+   si l'ordre des diapos change un jour, ceci suit tout seul. */
+var diapoDemo = canvas.closest('.slide');
+
+/* Identifiant de la boucle d'animation, ou null quand elle est à l'arrêt.
+   C'est lui qui permet de savoir si une boucle tourne déjà, et de l'annuler. */
+var boucle = null;
+
+// Peindre l'image : aucune modification d'état ici, on ne fait que dessiner.
+function dessiner() {
   ctx.fillStyle = '#6BB6E8';
   ctx.fillRect(0, 0, 420, 150);
 
@@ -345,16 +377,37 @@ function draw() {
 
   ctx.fillStyle = '#EFA92B';
   ctx.fillRect(x, 88, 26, 32);
-
-  if (running) {
-    x += vx;
-    if (x < 20 || x > 374) { vx = -vx; }
-    count++;
-    document.getElementById('frames').textContent = count;
-  }
-  requestAnimationFrame(draw);
 }
-draw();
+
+// Faire avancer la scène d'une image : ici, et seulement ici, l'état change.
+function avancer() {
+  x += vx;
+  if (x < 20 || x > 374) { vx = -vx; }
+  count++;
+  document.getElementById('frames').textContent = count;
+}
+
+function animer() {
+  boucle = requestAnimationFrame(animer);
+  avancer();
+  dessiner();
+}
+
+/* La boucle ne tourne que si elle sert à quelque chose : l'animation doit
+   être en lecture ET la diapo qui porte le canvas doit être affichée. Sans
+   cette seconde condition, on redessinait 60 fois par seconde un canvas
+   invisible pendant toute la lecture des cinq premières diapos — du travail
+   pour rien, et de la batterie en moins sur un portable. */
+function ajusterBoucle() {
+  var doitTourner = running && diapoDemo.classList.contains('on');
+
+  if (doitTourner && boucle === null) {
+    boucle = requestAnimationFrame(animer);
+  } else if (!doitTourner && boucle !== null) {
+    cancelAnimationFrame(boucle);
+    boucle = null;
+  }
+}
 
 show(0);
 </script>
