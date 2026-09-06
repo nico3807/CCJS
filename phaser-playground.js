@@ -491,63 +491,44 @@ function fillExampleSelect() {
   select.addEventListener("change", () => loadExample(select.value));
 }
 
-/* ── Copier-coller désactivé ─────────────────────────────────────────────── */
+/* ── Copie désactivée ────────────────────────────────────────────────────── */
 
-/* On tape son code, on ne le copie pas : recopier une correction sans la
-   lire n'apprend rien.
+/* Le principe tient en une phrase : le code peut entrer dans l'éditeur, il
+   ne peut pas en sortir. Coller reste donc permis — l'étudiant peut reprendre
+   son travail d'une séance sur l'autre — mais on n'extrait pas le contenu de
+   l'éditeur vers le presse-papiers.
 
-   Deux mécanismes distincts, parce que les deux gestes ne se ressemblent pas
-   du tout du point de vue du navigateur.
-
-   Le collage, lui, modifie le document : on l'intercepte dans beforeChange
-   plutôt qu'au clavier, parce qu'un collage arrive aussi par le menu
-   contextuel, par le menu Édition du navigateur ou par le clic du milieu
-   sous Linux. CodeMirror étiquette tous ces chemins d'un même « origin »
-   valant "paste", ce qui donne un seul point de contrôle. Les chargements
-   d'exemple et le bouton « réinitialiser » passent, eux, par setValue() :
-   ils ont un autre origin et ne sont pas touchés.
-
-   La copie ne modifie rien : beforeChange ne la voit jamais. Il faut donc
-   l'arrêter au niveau des événements du navigateur.
+   La copie ne modifie pas le document, donc l'événement « beforeChange » de
+   CodeMirror ne la voit jamais : il faut l'arrêter au niveau des événements
+   du navigateur.
 
    Ce garde-fou décourage, il ne verrouille pas : un étudiant qui ouvre les
    outils de développement en fera ce qu'il veut. Le but est de supprimer le
    réflexe, pas de gagner une course à l'armement. */
-function interdireCopierColler(editeur) {
-  // Un Ctrl-V maintenu enfoncé ne doit pas noyer la console de messages.
-  const derniersAvertissements = new Map();
-
-  function avertir(message) {
-    const maintenant = Date.now();
-    if (maintenant - (derniersAvertissements.get(message) || 0) < 3000) return;
-    derniersAvertissements.set(message, maintenant);
-    appendConsole("warn", message);
-  }
-
-  editeur.on("beforeChange", (instance, changement) => {
-    if (changement.origin !== "paste") return;
-    changement.cancel();
-    avertir(
-      "Le collage est désactivé dans cet éditeur : tape le code toi-même, c'est comme ça qu'il rentre."
-    );
-  });
+function interdireLaCopie(editeur) {
+  // Un Ctrl-C maintenu enfoncé ne doit pas noyer la console de messages.
+  let dernierAvertissement = 0;
 
   /* On écoute en phase de capture sur l'élément qui enveloppe l'éditeur :
      l'événement naît sur la zone de saisie cachée de CodeMirror, qui est à
      l'intérieur, et on l'attrape donc avant elle. Se limiter à cet élément
      laisse le reste de la page — énoncé, correction, console — copiable.
 
-     « cut » est bloqué avec « copy » : le laisser passer rouvrirait un
-     chemin vers le presse-papiers, et supprimerait du code que l'étudiant
-     ne pourrait plus recoller. */
+     « cut » est bloqué avec « copy » : c'est une copie doublée d'une
+     suppression, le laisser passer rouvrirait le chemin vers le
+     presse-papiers. */
   const enveloppe = editeur.getWrapperElement();
   ["copy", "cut"].forEach((nom) => {
     enveloppe.addEventListener(
       nom,
       (evenement) => {
         evenement.preventDefault();
-        avertir(
-          "La copie est désactivée dans cet éditeur : c'est en écrivant le code qu'on l'apprend."
+        const maintenant = Date.now();
+        if (maintenant - dernierAvertissement < 3000) return;
+        dernierAvertissement = maintenant;
+        appendConsole(
+          "warn",
+          "La copie est désactivée dans cet éditeur. Tu peux coller du code, mais pas en sortir."
         );
       },
       true
@@ -564,8 +545,10 @@ document.addEventListener("DOMContentLoaded", () => {
     indentUnit: 2,
     tabSize: 2,
     lineWrapping: true,
-    // Le glisser-déposer de texte est la seconde porte d'entrée pour du code
-    // tout fait ; CodeMirror sait la fermer lui-même.
+    /* Glisser une sélection hors de l'éditeur contournerait l'interdiction de
+       copier : on désactive le glisser-déposer, que CodeMirror gère d'un
+       bloc. Le prix à payer est qu'on ne peut pas non plus y déposer du
+       texte, mais Ctrl-V reste là pour ça. */
     dragDrop: false,
     extraKeys: {
       "Ctrl-Enter": runCode,
@@ -573,7 +556,7 @@ document.addEventListener("DOMContentLoaded", () => {
     },
   });
 
-  interdireCopierColler(cmEditor);
+  interdireLaCopie(cmEditor);
 
   fillExampleSelect();
 
