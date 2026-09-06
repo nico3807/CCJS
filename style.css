@@ -42,6 +42,13 @@ header {
   font-weight: 700;
   color: #fff;
   letter-spacing: .01em;
+  /* Sur écran étroit, c'est le titre qui cède la place aux boutons, pas
+     l'inverse : min-width:0 autorise cet élément flex à rétrécir sous la
+     largeur de son texte, et l'ellipse rend la troncature lisible. */
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .header-back {
   font-size: 13px;
@@ -51,6 +58,9 @@ header {
   border-radius: 6px;
   border: 1px solid rgba(255,255,255,.25);
   transition: background .15s;
+  /* Sans cela, un libellé de deux mots passe à la ligne dès que la place
+     manque et le bouton (49 px) déborde du bandeau (54 px). */
+  white-space: nowrap;
 }
 .header-back:hover { background: rgba(255,255,255,.12); }
 
