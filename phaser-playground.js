@@ -335,7 +335,11 @@ function piloteApercuEditeur(action) {
 window.addEventListener("message", (event) => {
   if (!event.data || event.data.source !== "phaser-playground-pret") return;
   if (event.data.channel !== "editeur") return;
-  if (document.getElementById("solutionModal").hidden) return;
+  // Une pop-up ouverte, quelle qu'elle soit, veut un aperçu à l'arrêt.
+  const popupOuverte =
+    !document.getElementById("solutionModal").hidden ||
+    !document.getElementById("explicationModal").hidden;
+  if (!popupOuverte) return;
   piloteApercuEditeur("dormir");
 });
 
@@ -354,11 +358,206 @@ function openSolution() {
 
 function closeSolution() {
   const modal = document.getElementById("solutionModal");
+  // Échap appelle cette fonction même quand la pop-up n'est pas ouverte : sans
+  // ce garde-fou, chaque appui envoyait un « reveiller » à l'aperçu.
+  if (modal.hidden) return;
+
   modal.hidden = true;
   // On vide l'iframe pour arrêter la boucle de rendu du jeu.
   document.getElementById("solutionFrame").src = "about:blank";
   // L'étudiant retrouve son aperçu là où il l'avait laissé.
   piloteApercuEditeur("reveiller");
+}
+
+/* ── Visite guidée ───────────────────────────────────────────────────────── */
+
+/* Certains exemples sont trop longs pour être compris d'une traite. Quand
+   phaser-explications.js en décrit un, un bouton ouvre une pop-up qui le
+   découpe en chapitres, avec des lignes de code cliquables.
+
+   Tout le contenu est inséré avec textContent et des nœuds construits à la
+   main : jamais d'innerHTML. Le code cité contient des chevrons et des
+   apostrophes, qu'il faut afficher tels quels et non interpréter. */
+
+function explicationCourante() {
+  if (typeof PHASER_EXPLICATIONS === "undefined") return undefined;
+  return PHASER_EXPLICATIONS[currentExample.id];
+}
+
+// Le schéma des transitions entre scènes, en tête du premier chapitre.
+function construireSchema(etapes) {
+  const bloc = document.createElement("div");
+  bloc.className = "expl-schema";
+
+  etapes.forEach((etape) => {
+    const ligne = document.createElement("div");
+    ligne.className = "expl-schema-ligne";
+
+    const depart = document.createElement("span");
+    depart.className = "expl-scene";
+    depart.textContent = etape.de;
+
+    // La condition du passage est écrite au-dessus de la flèche.
+    const milieu = document.createElement("span");
+    milieu.className = "expl-transition";
+    const via = document.createElement("span");
+    via.className = "expl-via";
+    via.textContent = etape.via;
+    const fleche = document.createElement("span");
+    fleche.className = "expl-fleche";
+    fleche.textContent = "───────▶";
+    milieu.append(via, fleche);
+
+    const arrivee = document.createElement("span");
+    arrivee.className = "expl-scene";
+    arrivee.textContent = etape.vers.join("  ·  ");
+
+    ligne.append(depart, milieu, arrivee);
+    bloc.appendChild(ligne);
+  });
+
+  return bloc;
+}
+
+function construireCode(lignes) {
+  const bloc = document.createElement("div");
+  bloc.className = "expl-code";
+
+  lignes.forEach((entree) => {
+    // Coupure dans l'extrait : le code réel continue, on ne le montre pas.
+    if (entree.saut) {
+      const saut = document.createElement("div");
+      saut.className = "expl-saut";
+      saut.textContent = "⋮";
+      saut.title = "Passage volontairement omis";
+      bloc.appendChild(saut);
+      return;
+    }
+
+    // Ligne de contexte : lisible, mais rien à cliquer.
+    if (!entree.note) {
+      const simple = document.createElement("div");
+      simple.className = "expl-ligne";
+      simple.textContent = entree.l;
+      bloc.appendChild(simple);
+      return;
+    }
+
+    /* Ligne commentée. Un vrai <button> plutôt qu'un div cliquable : on
+       hérite gratuitement du focus au clavier, de l'activation à Entrée et
+       à l'espace, et de l'annonce par les lecteurs d'écran. */
+    const bouton = document.createElement("button");
+    bouton.type = "button";
+    bouton.className = "expl-ligne expl-cliquable";
+    bouton.setAttribute("aria-expanded", "false");
+
+    const texte = document.createElement("span");
+    texte.className = "expl-ligne-texte";
+    texte.textContent = entree.l;
+
+    const puce = document.createElement("span");
+    puce.className = "expl-puce";
+    puce.textContent = "?";
+    puce.setAttribute("aria-hidden", "true");
+
+    bouton.append(texte, puce);
+
+    const note = document.createElement("p");
+    note.className = "expl-note";
+    note.textContent = entree.note;
+    note.hidden = true;
+
+    bouton.addEventListener("click", () => {
+      const onOuvre = note.hidden;
+      note.hidden = !onOuvre;
+      bouton.setAttribute("aria-expanded", String(onOuvre));
+      bouton.classList.toggle("ouvert", onOuvre);
+    });
+
+    bloc.append(bouton, note);
+  });
+
+  return bloc;
+}
+
+function afficherChapitre(explication, index) {
+  const chapitre = explication.chapitres[index];
+  if (!chapitre) return;
+
+  const onglets = document.getElementById("explicationOnglets");
+  Array.from(onglets.children).forEach((bouton, rang) => {
+    bouton.classList.toggle("actif", rang === index);
+    bouton.setAttribute("aria-current", rang === index ? "true" : "false");
+  });
+
+  const zone = document.getElementById("explicationContenu");
+  zone.textContent = "";
+
+  const titre = document.createElement("h4");
+  titre.textContent = chapitre.titre;
+  zone.appendChild(titre);
+
+  (chapitre.texte || []).forEach((paragraphe) => {
+    const p = document.createElement("p");
+    p.textContent = paragraphe;
+    zone.appendChild(p);
+  });
+
+  if (chapitre.schema) zone.appendChild(construireSchema(chapitre.schema));
+  zone.appendChild(construireCode(chapitre.code));
+
+  // On repart du haut : sinon, en changeant de chapitre depuis le bas d'un
+  // long extrait, on arrive au milieu du suivant.
+  zone.scrollTop = 0;
+}
+
+function remplirOnglets(explication) {
+  const onglets = document.getElementById("explicationOnglets");
+  onglets.textContent = "";
+
+  explication.chapitres.forEach((chapitre, index) => {
+    const bouton = document.createElement("button");
+    bouton.type = "button";
+    bouton.textContent = index + 1 + ". " + chapitre.onglet;
+    bouton.addEventListener("click", () => afficherChapitre(explication, index));
+    onglets.appendChild(bouton);
+  });
+}
+
+function openExplication() {
+  const explication = explicationCourante();
+  if (!explication) return;
+
+  document.getElementById("explicationLabel").textContent =
+    currentExample.label + " — " + explication.titre;
+  document.getElementById("explicationIntro").textContent = explication.intro;
+
+  remplirOnglets(explication);
+  afficherChapitre(explication, 0);
+  document.getElementById("explicationModal").hidden = false;
+
+  // Rien à jouer pendant la lecture : on endort l'aperçu, comme pour la
+  // pop-up du résultat attendu.
+  piloteApercuEditeur("dormir");
+
+  const premier = document.querySelector("#explicationOnglets button");
+  if (premier) premier.focus();
+}
+
+function closeExplication() {
+  const modal = document.getElementById("explicationModal");
+  /* Sortie immédiate si la pop-up est déjà fermée : cette fonction est aussi
+     appelée par la touche Échap et au chargement d'un exemple, où elle ne
+     doit ni réveiller l'aperçu ni voler le focus. */
+  if (modal.hidden) return;
+
+  modal.hidden = true;
+  piloteApercuEditeur("reveiller");
+
+  // Le focus revient d'où il venait, sinon il retombe sur <body> et la
+  // navigation au clavier repart du début de la page.
+  const bouton = document.getElementById("explicationButton");
+  if (!bouton.hidden) bouton.focus();
 }
 
 /* ── Assistant pédagogique ───────────────────────────────────────────────── */
@@ -465,6 +664,14 @@ function loadExample(id) {
   const estExercice = depart !== example.code;
   document.getElementById("solutionButton").hidden = !estExercice;
   document.getElementById("aideIaButton").hidden = !estExercice;
+  /* La visite guidée ne dépend pas des trous : elle existe pour les exemples
+     dont la structure mérite d'être expliquée, exercice ou non.
+     On règle la visibilité du bouton AVANT de fermer la pop-up : si le nouvel
+     exemple n'a pas de visite, closeExplication ne doit pas rendre le focus à
+     un bouton qui vient de disparaître. */
+  document.getElementById("explicationButton").hidden =
+    typeof PHASER_EXPLICATIONS === "undefined" || !PHASER_EXPLICATIONS[example.id];
+  closeExplication();
   closeAssistant();
 
   cmEditor.setValue(depart);
@@ -570,6 +777,13 @@ document.addEventListener("DOMContentLoaded", () => {
     if (event.target.id === "solutionModal") closeSolution();
   });
 
+  document.getElementById("explicationButton").addEventListener("click", openExplication);
+  document.getElementById("explicationClose").addEventListener("click", closeExplication);
+  document.getElementById("explicationFermer").addEventListener("click", closeExplication);
+  document.getElementById("explicationModal").addEventListener("click", (event) => {
+    if (event.target.id === "explicationModal") closeExplication();
+  });
+
   document.getElementById("aideIaButton").addEventListener("click", openAssistant);
   document.getElementById("closeAssistantButton").addEventListener("click", closeAssistant);
   document.getElementById("assistantModal").addEventListener("click", (event) => {
@@ -582,6 +796,7 @@ document.addEventListener("DOMContentLoaded", () => {
   document.addEventListener("keydown", (event) => {
     if (event.key !== "Escape") return;
     closeSolution();
+    closeExplication();
     closeAssistant();
   });
 
