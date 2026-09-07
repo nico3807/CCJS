@@ -50,6 +50,11 @@
           <button id="solutionButton" class="secondary-btn" title="Voir à quoi doit ressembler le jeu terminé" hidden>
             👁 Résultat attendu
           </button>
+          <!-- N'apparaît que pour les exemples qui ont une visite guidée
+               dans phaser-explications.js (pour l'instant, T4). -->
+          <button id="explicationButton" class="secondary-btn" title="Comprendre comment ce jeu est construit" hidden>
+            🧭 Visite guidée
+          </button>
           <!-- Pas d'id "assistantButton" : il est déjà stylé pour le bouton
                d'entête du module JS, et son display l'empêcherait de se cacher. -->
           <button id="aideIaButton" class="secondary-btn" title="Demander des conseils sur ton code" hidden>
@@ -98,6 +103,30 @@
       </div>
     </div>
 
+    <!-- Pop-up : visite guidée du code, chapitre par chapitre. Le contenu est
+         entièrement construit en JavaScript à partir de phaser-explications.js. -->
+    <div id="explicationModal" class="modal-overlay" role="dialog" aria-modal="true"
+         aria-labelledby="explicationLabel" hidden>
+      <div class="modal-box expl-box">
+        <div class="modal-bar">
+          <h3 id="explicationLabel"></h3>
+          <button id="explicationClose" title="Fermer (Échap)" aria-label="Fermer">✕</button>
+        </div>
+        <p id="explicationIntro" class="expl-intro"></p>
+        <div class="expl-corps">
+          <nav id="explicationOnglets" class="expl-onglets" aria-label="Chapitres de la visite"></nav>
+          <div id="explicationContenu" class="expl-contenu" tabindex="0"></div>
+        </div>
+        <div class="expl-pied">
+          <p class="modal-hint">
+            Clique sur une ligne de code marquée <span class="expl-puce-exemple">?</span>
+            pour savoir à quoi elle sert.
+          </p>
+          <button id="explicationFermer" class="secondary-btn">Fermer et revenir au code</button>
+        </div>
+      </div>
+    </div>
+
     <!-- Assistant pédagogique : mêmes trois niveaux d'aide que les modules JS et PHP. -->
     <div id="assistantModal" class="modal" role="dialog" aria-modal="true"
          aria-labelledby="assistantModalTitle">
@@ -127,6 +156,7 @@
 
     <script src="./ai.js"></script>
     <script src="./phaser-examples.js"></script>
+    <script src="./phaser-explications.js"></script>
     <script src="./phaser-playground.js"></script>
   </body>
 </html>
